@@ -1,0 +1,48 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}¿Quién gastó esto?{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+{% if user.is_authenticated %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <a class="brand" href="{% url 'groups' %}">¿Quién gastó esto?</a>
+        <nav class="side-nav">
+            <a href="{% url 'groups' %}" class="{% if request.resolver_match.url_name == 'groups' %}active{% endif %}">Resumen</a>
+            <span class="disabled-link">Compras</span>
+            <span class="disabled-link">Pagos</span>
+            <span class="disabled-link">Integrantes</span>
+            <span class="disabled-link">Cambios</span>
+        </nav>
+        <div class="sidebar-bottom">
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button class="logout-link" type="submit">Cerrar sesión</button>
+            </form>
+            <div class="sidebar-user">
+                <strong>{{ user.get_full_name|default:user.username }}</strong>
+                <small>Cuenta activa</small>
+            </div>
+        </div>
+    </aside>
+    <main class="main-content">
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+{% else %}
+    {% block auth_content %}{% endblock %}
+{% endif %}
+</body>
+</html>
