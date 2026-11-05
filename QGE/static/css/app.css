@@ -1,9 +1,9 @@
 :root {
-    --sidebar: #06495c;
-    --sidebar: #07333f;
+    --sidebar: #063746;
+    --teal: #063746;       
     --background: #F3F7F8;
     --white: #FFFFFF;
-    --sidebar: #063746;
+    --ink: #1F2D32;        
     --muted: #71858C;
     --line: #DDE7EA;
     --coral: #FBE5DC;
@@ -44,7 +44,7 @@ a {
     display: flex;
     align-items: center;
     padding: 9.5%;
-    background: var(--teal);
+    background: var(--teal); /* Ahora usará correctamente el color oscuro */
     color: var(--white);
 }
 
