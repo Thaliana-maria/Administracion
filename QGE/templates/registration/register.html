@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Registro | ¿Quién gastó esto?{% endblock %}
+{% block auth_content %}
+<div class="auth-screen register-screen">
+    <section class="auth-brand">
+        <div class="brand-copy">
+            <span class="auth-kicker">GASTOS COMPARTIDOS</span>
+            <h1>¿Quién gastó esto?</h1>
+            <p>Crea tu cuenta con correo y contraseña. Tu contraseña se guarda cifrada.</p>
+        </div>
+    </section>
+    <section class="auth-side">
+        <form method="post" class="auth-form register-form">
+            {% csrf_token %}
+            <h2>Crear cuenta</h2>
+            {% if form.non_field_errors %}<div class="form-error">{{ form.non_field_errors }}</div>{% endif %}
+            <label for="id_name">Nombre</label>
+            {{ form.name }}
+            {% for error in form.name.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+            <label for="id_email">Correo electrónico</label>
+            {{ form.email }}
+            {% for error in form.email.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+            <label for="id_password">Contraseña</label>
+            {{ form.password }}
+            <small class="help-text">Se almacena con cifrado hash.</small>
+            {% for error in form.password.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+            <label for="id_confirm_password">Confirmar contraseña</label>
+            {{ form.confirm_password }}
+            {% for error in form.confirm_password.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+            <label class="consent-line">
+                {{ form.privacy_accept }}
+                <span>Autorizo el tratamiento de mi nombre y correo para gestionar los gastos compartidos del grupo (Ley 1581 de 2012).</span>
+            </label>
+            {% for error in form.privacy_accept.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+            <button class="button primary full" type="submit">Crear cuenta</button>
+            <a class="button outline full" href="{% url 'login' %}">Ya tengo cuenta</a>
+        </form>
+    </section>
+</div>
+{% endblock %}

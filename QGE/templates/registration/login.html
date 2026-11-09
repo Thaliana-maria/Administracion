@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Inicio de sesión | ¿Quién gastó esto?{% endblock %}
+{% block auth_content %}
+<div class="auth-screen">
+    <section class="auth-brand">
+        <div class="brand-copy">
+            <span class="auth-kicker">GASTOS COMPARTIDOS</span>
+            <h1>¿Quién gastó esto?</h1>
+            <p>Registra las compras del hogar, asigna cada gasto y mira quién le debe a quién.</p>
+        </div>
+    </section>
+    <section class="auth-side">
+        <form method="post" class="auth-form">
+            {% csrf_token %}
+            <h2>Iniciar sesión</h2>
+            {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+            <label for="id_email">Correo electrónico</label>
+            {{ form.email }}
+            {% for error in form.email.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+            <label for="id_password">Contraseña</label>
+            {{ form.password }}
+            {% for error in form.password.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+            <button class="button primary full" type="submit">Iniciar sesión</button>
+            <a class="button outline full" href="{% url 'register' %}">Crear cuenta</a>
+        </form>
+    </section>
+</div>
+{% endblock %}

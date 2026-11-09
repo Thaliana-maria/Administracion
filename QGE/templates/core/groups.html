@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Mis grupos | ¿Quién gastó esto?{% endblock %}
+{% block content %}
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">Crear y consultar grupos</span>
+        <h1>Mis grupos</h1>
+    </div>
+</div>
+<div class="groups-grid">
+    <section class="panel groups-panel">
+        <h2>Mis grupos</h2>
+        {% for membership in memberships %}
+        <div class="group-entry">
+            <div>
+                <strong><a href="{% url 'dashboard' membership.household.pk %}">{{ membership.household.name }}</a></strong>
+                <a class="group-open" href="{% url 'dashboard' membership.household.pk %}">Abrir dashboard →</a>
+                <small>Creado por: {{ membership.household.created_by.first_name|default:membership.household.created_by.username }}</small>
+            </div>
+            <span class="role-badge">Administrador</span>
+        </div>
+        {% empty %}
+        <div class="empty-state">Todavía no tienes grupos. Crea uno para comenzar.</div>
+        {% endfor %}
+    </section>
+    <section class="panel create-panel">
+        <h2>Crear grupo</h2>
+        <form method="post">
+            {% csrf_token %}
+            <label for="id_name">Nombre del grupo</label>
+            {{ form.name }}
+            {% for error in form.name.errors %}<small class="field-error">{{ error }}</small>{% endfor %}
+            <small class="help-text">La persona que crea el grupo queda registrada como administradora.</small>
+            <button class="button primary" type="submit">Crear grupo</button>
+        </form>
+    </section>
+</div>
+{% endblock %}
