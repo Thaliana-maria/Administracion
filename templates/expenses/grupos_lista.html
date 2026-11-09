@@ -1,0 +1,10 @@
+﻿{% extends "base.html" %}
+{% block contenido %}
+<h1>Mis grupos</h1>
+{% for grupo in grupos %}
+    <p><a href="{% url 'grupo_detalle' grupo.id %}">{{ grupo.nombre }}</a></p>
+{% empty %}
+    <p>Todavía no perteneces a ningún grupo.</p>
+{% endfor %}
+<p><a href="{% url 'grupo_nuevo' %}">Crear grupo</a></p>
+{% endblock %}

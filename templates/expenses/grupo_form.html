@@ -1,0 +1,9 @@
+﻿{% extends "base.html" %}
+{% block contenido %}
+<h1>Crear grupo</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ formulario.as_p }}
+    <button type="submit">Crear</button>
+</form>
+{% endblock %}

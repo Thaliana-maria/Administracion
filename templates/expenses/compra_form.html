@@ -1,0 +1,21 @@
+﻿{% extends "base.html" %}
+{% block contenido %}
+<h1>Registrar compra en {{ grupo.nombre }}</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ formulario.as_p }}
+
+    <h2>Ítems</h2>
+    {{ formset.management_form }}
+    {{ formset.non_form_errors }}
+    {% for f in formset %}
+        <fieldset>
+            <legend>Ítem {{ forloop.counter }}</legend>
+            {{ f.as_p }}
+        </fieldset>
+    {% endfor %}
+    <p>El total de la compra se calcula con la suma de los ítems. Si eliges «Una persona», selecciona quién.</p>
+    <button type="submit">Guardar compra</button>
+</form>
+<p><a href="{% url 'grupo_detalle' grupo.id %}">Volver al grupo</a></p>
+{% endblock %}

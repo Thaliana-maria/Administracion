@@ -1,0 +1,24 @@
+﻿{% extends "base.html" %}
+{% block contenido %}
+<h1>{{ grupo.nombre }}</h1>
+
+<h2>Integrantes y saldos</h2>
+<table border="1" cellpadding="4">
+    <tr><th>Integrante</th><th>Saldo</th></tr>
+    {% for usuario, saldo in filas %}
+    <tr><td>{{ usuario.get_full_name|default:usuario.email }}</td><td>{{ saldo }}</td></tr>
+    {% endfor %}
+</table>
+<p><a href="{% url 'integrante_nuevo' grupo.id %}">Agregar integrante</a></p>
+
+<h2>Compras</h2>
+{% for compra in compras %}
+    <p>
+        <a href="{% url 'compra_detalle' compra.id %}">{{ compra.fecha }} - {{ compra.descripcion|default:"Compra" }}</a>
+        - {{ compra.total }} (pagó {{ compra.pagador.get_full_name|default:compra.pagador.email }})
+    </p>
+{% empty %}
+    <p>Aún no hay compras.</p>
+{% endfor %}
+<p><a href="{% url 'compra_nueva' grupo.id %}">Registrar compra</a></p>
+{% endblock %}
