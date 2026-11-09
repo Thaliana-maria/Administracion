@@ -1,4 +1,4 @@
-from datetime import date
+﻿from datetime import date
 from django.test import TestCase
 from accounts.models import Usuario
 from expenses.models import Grupo, Membresia, Compra, Item, Asignacion

@@ -1,4 +1,4 @@
-from decimal import Decimal
+﻿from decimal import Decimal
 from django.db.models import Sum
 from expenses.models import Membresia, Compra, Asignacion
 from ledger.models import Pago
