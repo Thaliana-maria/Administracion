@@ -164,13 +164,18 @@ def actualizar_pago(
         deudor_id != pago.deudor_id or acreedor_id != pago.acreedor_id
     ):
         raise PermissionDenied("Solo un administrador puede corregir las partes del pago.")
-    aplicaciones_validadas = _validar_aplicaciones(
-        grupo_id=pago.grupo_id,
-        deudor_id=deudor_id,
-        acreedor_id=acreedor_id,
-        monto=monto,
-        aplicaciones=aplicaciones,
-        excluir_pago_id=pago.pk,
+    aplicaciones_existentes = pago.aplicaciones.filter(anulada=False).exists()
+    aplicaciones_validadas = (
+        _validar_aplicaciones(
+            grupo_id=pago.grupo_id,
+            deudor_id=deudor_id,
+            acreedor_id=acreedor_id,
+            monto=monto,
+            aplicaciones=aplicaciones,
+            excluir_pago_id=pago.pk,
+        )
+        if aplicaciones_existentes or aplicaciones
+        else []
     )
     aplicaciones_anteriores = list(
         pago.aplicaciones.filter(anulada=False).values(

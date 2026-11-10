@@ -46,6 +46,15 @@ def establecer_rol(usuario, grupo_id, miembro_id, rol):
     exigir_administrador(grupo_id, usuario)
     if rol not in Membresia.Rol.values:
         raise ValueError("El rol indicado no es válido.")
+    if not (
+        Grupo.objects.filter(pk=grupo_id, creador_id=miembro_id).exists()
+        or Membresia.objects.filter(
+            grupo_id=grupo_id,
+            usuario_id=miembro_id,
+            activo=True,
+        ).exists()
+    ):
+        raise ValidationError("El usuario no es integrante activo del grupo.")
     if (
         rol != Membresia.Rol.ADMINISTRADOR
         and Grupo.objects.filter(pk=grupo_id, creador_id=miembro_id).exists()

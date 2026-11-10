@@ -85,6 +85,30 @@ class PruebasObligacionesYPagos(TestCase):
         self.assertEqual(self.obligacion.saldo_pendiente, Decimal("7500.00"))
         self.assertTrue(Historial.objects.filter(tipo_registro="ledger.Pago", accion="editar").exists())
 
+    def test_editar_pago_historico_sin_aplicaciones_conserva_y_audita(self):
+        pago = Pago.objects.create(
+            grupo=self.grupo,
+            deudor=self.deudor,
+            acreedor=self.acreedor,
+            monto=100,
+            fecha=date.today(),
+        )
+
+        from ledger.services.obligaciones import actualizar_pago
+
+        actualizar_pago(
+            self.acreedor,
+            pago.pk,
+            monto="150.00",
+            fecha=date.today(),
+            aplicaciones=[],
+        )
+
+        pago.refresh_from_db()
+        self.assertEqual(pago.monto, Decimal("150.00"))
+        self.assertEqual(pago.aplicaciones.count(), 0)
+        self.assertTrue(Historial.objects.filter(tipo_registro="ledger.Pago", accion="editar").exists())
+
     def test_anulacion_de_pago_conserva_el_registro_y_restaura_la_obligacion(self):
         pago = self.registrar_abono()
         aplicacion = pago.aplicaciones.get()

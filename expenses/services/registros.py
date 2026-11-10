@@ -1,8 +1,7 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 from auditlog.services import registrar_cambio
@@ -38,16 +37,7 @@ def _datos_compra(compra):
 
 
 @transaction.atomic
-def actualizar_compra(
-    usuario,
-    compra_id,
-    *,
-    fecha=None,
-    total=None,
-    impuesto=None,
-    descuento=None,
-    descripcion=None,
-):
+def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion=None):
     compra = Compra.objects.select_for_update().get(pk=compra_id)
     exigir_puede_editar_compra(compra, usuario)
     if compra.anulada:
@@ -58,47 +48,22 @@ def actualizar_compra(
         compra.fecha = fecha
     if descripcion is not None:
         compra.descripcion = descripcion
-    importes = (total, impuesto, descuento)
-    cambio_financiero = False
-    if any(valor is not None for valor in importes):
-        impuesto_nuevo = compra.impuesto if impuesto is None else Decimal(str(impuesto))
-        descuento_nuevo = compra.descuento if descuento is None else Decimal(str(descuento))
-        if impuesto_nuevo < 0 or descuento_nuevo < 0:
-            raise ValidationError("El IVA y el descuento no pueden ser negativos.")
-        if (
-            impuesto_nuevo != impuesto_nuevo.quantize(Decimal("0.01"))
-            or descuento_nuevo != descuento_nuevo.quantize(Decimal("0.01"))
-        ):
-            raise ValidationError("El IVA y el descuento admiten máximo dos decimales.")
-        subtotal = Item.objects.filter(compra=compra, anulada=False).aggregate(
-            total=models.Sum("valor")
-        )["total"] or Decimal("0.00")
-        total_correcto = subtotal + impuesto_nuevo - descuento_nuevo
-        total_nuevo = total_correcto if total is None else Decimal(str(total))
-        if total_nuevo <= 0 or total_nuevo != total_nuevo.quantize(Decimal("0.01")):
+    if total is not None:
+        nuevo_total = Decimal(str(total))
+        if nuevo_total <= 0 or nuevo_total != nuevo_total.quantize(Decimal("0.01")):
             raise ValidationError("El total debe ser positivo y tener máximo dos decimales.")
-        if total_nuevo != total_correcto:
-            diferencia = total_nuevo - total_correcto
-            raise ValidationError(
-                f"Total declarado ${total_nuevo:.2f}; el total correcto es "
-                f"${total_correcto:.2f} (diferencia ${diferencia:.2f})."
-            )
-        cambio_financiero = (
-            total_nuevo != compra.total
-            or impuesto_nuevo != compra.impuesto
-            or descuento_nuevo != compra.descuento
-        )
-        if cambio_financiero:
+        if nuevo_total != compra.total:
             _exigir_sin_abonos(compra)
-        compra.total = total_nuevo
-        compra.impuesto = impuesto_nuevo
-        compra.descuento = descuento_nuevo
+            subtotal = Item.objects.filter(compra=compra, anulada=False).aggregate(
+                total=models.Sum("valor")
+            )["total"] or Decimal("0.00")
+            if nuevo_total != subtotal + compra.impuesto - compra.descuento:
+                raise ValidationError("El total de la compra debe coincidir con sus ítems.")
+            compra.total = nuevo_total
 
-    compra.save()
     datos_nuevos = _datos_compra(compra)
     if datos_anteriores != datos_nuevos:
-        if cambio_financiero:
-            recalcular_ajustes_compra(compra.pk)
+        compra.save()
         registrar_cambio(
             usuario,
             compra,
@@ -106,80 +71,6 @@ def actualizar_compra(
             {"antes": datos_anteriores, "despues": datos_nuevos},
         )
     return compra
-
-
-@transaction.atomic
-def actualizar_asignaciones(usuario, item_id, asignaciones):
-    item = Item.objects.select_for_update().select_related("compra").get(pk=item_id)
-    exigir_puede_editar_compra(item.compra, usuario)
-    if item.anulada or item.compra.anulada:
-        raise ValidationError("No se puede editar un ítem anulado.")
-
-    valores = {
-        int(usuario_id): Decimal(str(valor))
-        for usuario_id, valor in asignaciones.items()
-    }
-    if not valores or any(
-        valor <= 0 or valor != valor.quantize(Decimal("0.01"))
-        for valor in valores.values()
-    ):
-        raise ValidationError("Cada asignación debe ser positiva y tener máximo dos decimales.")
-    if sum(valores.values(), Decimal("0.00")) != item.valor:
-        raise ValidationError("La suma de las asignaciones debe coincidir con el valor del ítem.")
-
-    nuevas = _reemplazar_asignaciones(item, usuario, valores)
-    recalcular_ajustes_compra(item.compra_id)
-    return nuevas
-
-
-def _reemplazar_asignaciones(item, usuario, valores):
-    miembros = set(
-        Membresia.objects.filter(
-            grupo_id=item.compra.grupo_id,
-            usuario_id__in=valores,
-            activo=True,
-        ).values_list("usuario_id", flat=True)
-    )
-    if item.compra.grupo.creador_id in valores:
-        miembros.add(item.compra.grupo.creador_id)
-    if miembros != set(valores):
-        raise ValidationError("Todos los beneficiarios deben pertenecer al grupo.")
-
-    existentes = list(Asignacion.objects.select_for_update().filter(item=item, anulada=False))
-    _exigir_sin_abonos(item.compra, existentes)
-    ahora = timezone.now()
-    anteriores = [
-        {"beneficiario_id": row.beneficiario_id, "valor": str(row.valor_asignado)}
-        for row in existentes
-    ]
-    for asignacion in existentes:
-        asignacion.anulada = True
-        asignacion.anulada_en = ahora
-        asignacion.anulada_por = usuario
-        asignacion.save(update_fields=["anulada", "anulada_en", "anulada_por"])
-
-    nuevas = []
-    for usuario_id, valor in sorted(valores.items()):
-        nueva = Asignacion.objects.create(
-            item=item,
-            beneficiario_id=usuario_id,
-            valor_asignado=valor,
-        )
-        nuevas.append(nueva)
-
-    registrar_cambio(
-        usuario,
-        item,
-        "editar_asignaciones",
-        {
-            "antes": anteriores,
-            "despues": [
-                {"beneficiario_id": row.beneficiario_id, "valor": str(row.valor_asignado)}
-                for row in nuevas
-            ],
-        },
-    )
-    return nuevas
 
 
 @transaction.atomic
@@ -205,13 +96,6 @@ def actualizar_item(usuario, item_id, *, valor, asignaciones, descripcion=None):
         raise ValidationError("La suma de las asignaciones debe coincidir con el valor del ítem.")
 
     compra = Compra.objects.select_for_update().get(pk=item.compra_id)
-    total_items = Item.objects.filter(compra=compra, anulada=False).aggregate(
-        total=models.Sum("valor")
-    )["total"] or Decimal("0.00")
-    total_correcto = total_items + compra.impuesto - compra.descuento
-    if total_correcto != compra.total:
-        raise ValidationError("El total actual de la compra no coincide con sus componentes.")
-
     existentes = list(Asignacion.objects.select_for_update().filter(item=item, anulada=False))
     _exigir_sin_abonos(compra, existentes)
     datos_anteriores = {
@@ -219,13 +103,20 @@ def actualizar_item(usuario, item_id, *, valor, asignaciones, descripcion=None):
         "valor": str(item.valor),
         "compra_total": str(compra.total),
     }
-    compra.total = total_correcto - item.valor + valor_nuevo
+    total_items = Item.objects.filter(compra=compra, anulada=False).aggregate(
+        total=models.Sum("valor")
+    )["total"] or Decimal("0.00")
+    if compra.total != total_items + compra.impuesto - compra.descuento:
+        raise ValidationError("El total actual de la compra no coincide con sus componentes.")
+    compra.total += valor_nuevo - item.valor
+    if compra.total <= 0:
+        raise ValidationError("El total de la compra debe ser positivo.")
     compra.save(update_fields=["total"])
     item.valor = valor_nuevo
     if descripcion is not None:
         item.descripcion = descripcion
     item.save(update_fields=["valor", "descripcion"])
-    nuevas = _reemplazar_asignaciones(item, usuario, valores)
+    _reemplazar_asignaciones(item, usuario, valores, existentes)
     recalcular_ajustes_compra(compra.pk)
     registrar_cambio(
         usuario,
@@ -240,7 +131,67 @@ def actualizar_item(usuario, item_id, *, valor, asignaciones, descripcion=None):
             },
         },
     )
-    return item, nuevas
+    return item
+
+
+@transaction.atomic
+def actualizar_asignaciones(usuario, item_id, asignaciones):
+    item = Item.objects.get(pk=item_id)
+    return actualizar_item(
+        usuario,
+        item.pk,
+        valor=item.valor,
+        asignaciones=asignaciones,
+    )
+
+
+def _reemplazar_asignaciones(item, usuario, valores, existentes=None):
+    miembros = set(
+        Membresia.objects.filter(
+            grupo_id=item.compra.grupo_id,
+            usuario_id__in=valores,
+            activo=True,
+        ).values_list("usuario_id", flat=True)
+    )
+    if item.compra.grupo.creador_id in valores:
+        miembros.add(item.compra.grupo.creador_id)
+    if miembros != set(valores):
+        raise ValidationError("Todos los beneficiarios deben pertenecer al grupo.")
+
+    existentes = existentes or list(
+        Asignacion.objects.select_for_update().filter(item=item, anulada=False)
+    )
+    ahora = timezone.now()
+    anteriores = [
+        {"beneficiario_id": row.beneficiario_id, "valor": str(row.valor_asignado)}
+        for row in existentes
+    ]
+    for asignacion in existentes:
+        asignacion.anulada = True
+        asignacion.anulada_en = ahora
+        asignacion.anulada_por = usuario
+        asignacion.save(update_fields=["anulada", "anulada_en", "anulada_por"])
+
+    nuevas = [
+        Asignacion.objects.create(
+            item=item,
+            beneficiario_id=usuario_id,
+            valor_asignado=valor,
+        )
+        for usuario_id, valor in sorted(valores.items())
+    ]
+    registrar_cambio(
+        usuario,
+        item,
+        "editar_asignaciones",
+        {
+            "antes": anteriores,
+            "despues": [
+                {"beneficiario_id": row.beneficiario_id, "valor": str(row.valor_asignado)}
+                for row in nuevas
+            ],
+        },
+    )
 
 
 @transaction.atomic
@@ -249,30 +200,29 @@ def anular_item(usuario, item_id):
     exigir_puede_editar_compra(item.compra, usuario)
     if item.anulada or item.compra.anulada:
         raise ValidationError("El ítem ya está anulado.")
-    _exigir_sin_abonos(item.compra, item.asignaciones.filter(anulada=False))
+    asignaciones = list(item.asignaciones.select_for_update().filter(anulada=False))
+    _exigir_sin_abonos(item.compra, asignaciones)
 
     compra = Compra.objects.select_for_update().get(pk=item.compra_id)
     total_items = Item.objects.filter(compra=compra, anulada=False).aggregate(
         total=models.Sum("valor")
     )["total"] or Decimal("0.00")
-    total_correcto = total_items + compra.impuesto - compra.descuento
-    if total_correcto != compra.total:
+    if compra.total != total_items + compra.impuesto - compra.descuento:
         raise ValidationError("El total actual de la compra no coincide con sus componentes.")
     if total_items == item.valor:
         raise ValidationError("Para anular el último ítem, debe anularse la compra completa.")
-    total_nuevo = total_correcto - item.valor
-    if total_nuevo <= 0:
-        raise ValidationError("La anulación dejaría el total de la compra en cero o negativo.")
 
     ahora = timezone.now()
     total_anterior = compra.total
-    compra.total = total_nuevo
+    compra.total -= item.valor
+    if compra.total <= 0:
+        raise ValidationError("La anulación dejaría el total de la compra en cero o negativo.")
     compra.save(update_fields=["total"])
     item.anulada = True
     item.anulada_en = ahora
     item.anulada_por = usuario
     item.save(update_fields=["anulada", "anulada_en", "anulada_por"])
-    for asignacion in item.asignaciones.filter(anulada=False):
+    for asignacion in asignaciones:
         asignacion.anulada = True
         asignacion.anulada_en = ahora
         asignacion.anulada_por = usuario

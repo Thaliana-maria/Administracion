@@ -11,11 +11,10 @@
     {% endfor %}
     {% if user.is_authenticated %}
         <p>Bienvenido, {{ user.email }}</p>
-        <p><a href="{% url 'nuevo_grupo' %}">Crear grupo</a></p>
         <h2>Mis grupos</h2>
         <ul>
             {% for grupo in grupos %}
-                <li><a href="{% url 'detalle_grupo' grupo.pk %}">{{ grupo.nombre }}</a></li>
+                <li>{{ grupo.nombre }}</li>
             {% empty %}
                 <li>Aún no perteneces a ningún grupo.</li>
             {% endfor %}

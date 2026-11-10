@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.test import TestCase
 from django.urls import reverse
 
@@ -64,6 +64,22 @@ class PruebasPermisosYRegistros(TestCase):
         self.assertTrue(es_administrador(self.grupo, self.miembro))
         evento = Historial.objects.get(tipo_registro="expenses.Membresia")
         self.assertEqual(evento.detalles["rol_nuevo"], Membresia.Rol.ADMINISTRADOR)
+
+    def test_administrador_no_puede_asignar_rol_a_un_usuario_externo(self):
+        with self.assertRaises(ValidationError):
+            establecer_rol(
+                self.admin,
+                self.grupo.pk,
+                self.externo.pk,
+                Membresia.Rol.ADMINISTRADOR,
+            )
+
+        self.assertFalse(
+            Membresia.objects.filter(
+                grupo=self.grupo,
+                usuario=self.externo,
+            ).exists()
+        )
 
     def test_miembro_edita_su_compra_pero_no_la_de_otro(self):
         compra = actualizar_compra(self.pagador, self.compra.pk, descripcion="Compra actualizada")
@@ -179,4 +195,31 @@ class PruebasPermisosYRegistros(TestCase):
         self.assertEqual(
             self.item.asignaciones.filter(anulada=False).count(),
             2,
+        )
+
+    def test_interfaz_edita_pago_historico_y_guarda_historial(self):
+        pago = Pago.objects.create(
+            grupo=self.grupo,
+            deudor=self.pagador,
+            acreedor=self.miembro,
+            monto=1000,
+            fecha=date.today(),
+            registrado_por=self.pagador,
+        )
+        self.client.force_login(self.pagador)
+
+        respuesta = self.client.post(
+            reverse("editar_pago", args=[pago.pk]),
+            {"monto": "1500.00", "fecha": date.today().isoformat()},
+        )
+
+        self.assertEqual(respuesta.status_code, 302)
+        pago.refresh_from_db()
+        self.assertEqual(pago.monto, Decimal("1500.00"))
+        self.assertEqual(pago.aplicaciones.count(), 0)
+        self.assertTrue(
+            Historial.objects.filter(
+                tipo_registro="ledger.Pago",
+                accion="editar",
+            ).exists()
         )

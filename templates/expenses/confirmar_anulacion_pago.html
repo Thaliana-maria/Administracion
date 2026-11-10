@@ -13,7 +13,7 @@
     <form method="post">
         {% csrf_token %}
         <button type="submit" name="confirmar" value="si">Confirmar anulación</button>
-        <a href="{% url 'detalle_grupo' pago.grupo_id %}">Cancelar</a>
+        <a href="{% url 'inicio' %}">Cancelar</a>
     </form>
 </body>
 </html>
