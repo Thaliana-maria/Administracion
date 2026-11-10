@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Confirmar anulación</title>
+</head>
+<body>
+    <h1>Confirmar anulación de compra</h1>
+    <p>¿Deseas anular la compra {{ compra.id }} por ${{ compra.total }}?</p>
+    <p>La compra, sus ítems y asignaciones se conservarán en el historial. Los pagos existentes no se borrarán.</p>
+    {% for message in messages %}
+        <p role="alert">{{ message }}</p>
+    {% endfor %}
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" name="confirmar" value="si">Confirmar anulación</button>
+        <a href="{% url 'detalle_grupo' compra.grupo_id %}">Cancelar</a>
+    </form>
+</body>
+</html>

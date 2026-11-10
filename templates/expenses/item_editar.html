@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Editar ítem</title>
+</head>
+<body>
+    <h1>Editar {{ item.descripcion }}</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ formulario.non_field_errors }}
+        {{ formulario.as_p }}
+        <button type="submit">Guardar ítem y repartir</button>
+    </form>
+    <p><a href="{% url 'detalle_grupo' item.compra.grupo_id %}">Volver al grupo</a></p>
+</body>
+</html>

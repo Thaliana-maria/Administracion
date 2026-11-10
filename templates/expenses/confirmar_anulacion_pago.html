@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <title>Confirmar anulación de pago</title>
+</head>
+<body>
+    <h1>Confirmar anulación de pago</h1>
+    <p>¿Anular el pago de {{ pago.deudor }} a {{ pago.acreedor }} por ${{ pago.monto }}?</p>
+    {% for message in messages %}
+        <p role="alert">{{ message }}</p>
+    {% endfor %}
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" name="confirmar" value="si">Confirmar anulación</button>
+        <a href="{% url 'detalle_grupo' pago.grupo_id %}">Cancelar</a>
+    </form>
+</body>
+</html>

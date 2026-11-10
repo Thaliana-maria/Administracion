@@ -1,13 +1,25 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <title>¿Quién gastó esto?</title>
 </head>
 <body>
     <h1>¿Quién gastó esto?</h1>
+    {% for message in messages %}
+        <p role="status">{{ message }}</p>
+    {% endfor %}
     {% if user.is_authenticated %}
         <p>Bienvenido, {{ user.email }}</p>
+        <p><a href="{% url 'nuevo_grupo' %}">Crear grupo</a></p>
+        <h2>Mis grupos</h2>
+        <ul>
+            {% for grupo in grupos %}
+                <li><a href="{% url 'detalle_grupo' grupo.pk %}">{{ grupo.nombre }}</a></li>
+            {% empty %}
+                <li>Aún no perteneces a ningún grupo.</li>
+            {% endfor %}
+        </ul>
         <form method="post" action="{% url 'logout' %}">
             {% csrf_token %}
             <button type="submit">Cerrar sesión</button>
