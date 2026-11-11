@@ -1,0 +1,10 @@
+﻿{% extends "base.html" %}
+{% block contenido %}
+<h1>Agregar integrante a {{ grupo.nombre }}</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ formulario.as_p }}
+    <button type="submit">Agregar</button>
+</form>
+<p><a href="{% url 'grupo_detalle' grupo.id %}">Volver al grupo</a></p>
+{% endblock %}

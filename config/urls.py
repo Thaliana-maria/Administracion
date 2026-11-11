@@ -6,4 +6,5 @@ urlpatterns = [
     path("", TemplateView.as_view(template_name="inicio.html"), name="inicio"),
     path("registro/", registro, name="registro"),
     path("cuentas/", include("django.contrib.auth.urls")),
+    path("", include("expenses.urls")),
 ]

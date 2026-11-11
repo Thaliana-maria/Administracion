@@ -1,0 +1,16 @@
+﻿{% extends "base.html" %}
+{% block contenido %}
+<h1>Compra #{{ compra.id }}</h1>
+<p>Grupo: <a href="{% url 'grupo_detalle' compra.grupo.id %}">{{ compra.grupo.nombre }}</a></p>
+<p>Fecha: {{ compra.fecha }} | Pagó: {{ compra.pagador.get_full_name|default:compra.pagador.email }} | Total: {{ compra.total }}</p>
+{% if compra.descripcion %}<p>{{ compra.descripcion }}</p>{% endif %}
+
+{% for item in items %}
+    <h3>{{ item.descripcion }} - {{ item.valor }}</h3>
+    <ul>
+    {% for asignacion in item.asignaciones.all %}
+        <li>{{ asignacion.beneficiario.get_full_name|default:asignacion.beneficiario.email }}: {{ asignacion.valor_asignado }}</li>
+    {% endfor %}
+    </ul>
+{% endfor %}
+{% endblock %}

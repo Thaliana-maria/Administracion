@@ -1,0 +1,18 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block titulo %}¿Quién gastó esto?{% endblock %}</title>
+</head>
+<body>
+    <nav>
+        <a href="{% url 'inicio' %}">Inicio</a> |
+        <a href="{% url 'grupos' %}">Mis grupos</a>
+    </nav>
+    {% if messages %}
+        <ul>{% for mensaje in messages %}<li>{{ mensaje }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% block contenido %}{% endblock %}
+</body>
+</html>
