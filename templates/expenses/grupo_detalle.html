@@ -1,0 +1,119 @@
+﻿{% extends "base.html" %}
+
+{% block titulo %}{{ grupo.nombre }} | Detalles del grupo{% endblock %}
+
+{% block contenido %}
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">Mis grupos / Detalles</span>
+        <h1>{{ grupo.nombre }}</h1>
+        <p>Consulta los integrantes, saldos y movimientos del grupo.</p>
+    </div>
+
+    <a class="button primary" href="{% url 'grupo_dashboard' grupo.id %}">
+        Ver dashboard
+    </a>
+</div>
+
+<div class="quick-links">
+    <a class="button primary" href="{% url 'compra_nueva' grupo.id %}">
+        Registrar compra
+    </a>
+    <a class="button outline" href="{% url 'integrante_nuevo' grupo.id %}">
+        Agregar integrante
+    </a>
+    <a class="button outline" href="{% url 'grupos' %}">
+        Volver a mis grupos
+    </a>
+</div>
+
+<div class="detail-grid">
+    <section class="panel members-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Integrantes y saldos</h2>
+                <p>Balance financiero de los integrantes.</p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Integrante</th>
+                        <th>Saldo</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for usuario, saldo in filas %}
+                    <tr>
+                        <td>{{ usuario.get_full_name|default:usuario.email }}</td>
+                        <td>$ {{ saldo|floatformat:2 }}</td>
+                        <td>
+                            {% if saldo > 0 %}
+                                <span class="positive">A favor</span>
+                            {% elif saldo < 0 %}
+                                <span class="negative">Pendiente</span>
+                            {% else %}
+                                Equilibrado
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3">No hay integrantes registrados.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel feature-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Compras del grupo</h2>
+                <p>Historial de compras registradas.</p>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Descripción</th>
+                        <th>Pagador</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for compra in compras %}
+                    <tr>
+                        <td>{{ compra.fecha|date:"d/m/Y" }}</td>
+                        <td>
+                            <a href="{% url 'compra_detalle' compra.id %}">
+                                {{ compra.descripcion|default:"Compra" }}
+                            </a>
+                        </td>
+                        <td>{{ compra.pagador.get_full_name|default:compra.pagador.email }}</td>
+                        <td>$ {{ compra.total|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">Aún no hay compras registradas.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="quick-links">
+            <a class="button primary" href="{% url 'compra_nueva' grupo.id %}">
+                Registrar nueva compra
+            </a>
+        </div>
+    </section>
+</div>
+{% endblock %}

@@ -1,0 +1,57 @@
+
+{% extends "base.html" %}
+
+{% block titulo %}Confirmar anulación de pago{% endblock %}
+
+{% block contenido %}
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">Gestión de pagos</span>
+        <h1>Confirmar anulación</h1>
+        <p>Revisa los datos del movimiento antes de continuar.</p>
+    </div>
+</div>
+
+<section class="panel feature-panel">
+    <div class="danger-panel">
+        <h2>¿Deseas anular este pago?</h2>
+
+        <p>
+            Estás a punto de anular el pago de
+            <strong>{{ pago.deudor }}</strong>
+            a
+            <strong>{{ pago.acreedor }}</strong>,
+            por un valor de
+            <strong>$ {{ pago.monto|floatformat:2 }}</strong>.
+        </p>
+
+        <p>
+            Esta acción modificará el estado del pago, pero conservará
+            su registro histórico.
+        </p>
+    </div>
+
+    {% for message in messages %}
+        <div class="message {{ message.tags }}" role="alert">
+            {{ message }}
+        </div>
+    {% endfor %}
+
+    <form method="post" class="quick-links">
+        {% csrf_token %}
+
+        <button
+            type="submit"
+            name="confirmar"
+            value="si"
+            class="button danger"
+        >
+            Confirmar anulación
+        </button>
+
+        <a class="button outline" href="{% url 'inicio' %}">
+            Cancelar
+        </a>
+    </form>
+</section>
+{% endblock %}

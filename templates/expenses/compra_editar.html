@@ -1,0 +1,54 @@
+
+{% extends "base.html" %}
+
+{% block titulo %}Editar compra #{{ compra.pk }}{% endblock %}
+
+{% block contenido %}
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">Edición de compra</span>
+        <h1>Editar compra #{{ compra.pk }}</h1>
+        <p>Actualiza la fecha o descripción de la compra.</p>
+    </div>
+    <a class="button outline" href="{% url 'compra_detalle' compra.pk %}">
+        Volver al detalle
+    </a>
+</div>
+
+<section class="panel feature-panel edit-panel">
+    <h2>Información de la compra</h2>
+
+    <form method="post" class="feature-form">
+        {% csrf_token %}
+
+        {% if formulario.non_field_errors %}
+            <div class="form-error">
+                {{ formulario.non_field_errors }}
+            </div>
+        {% endif %}
+
+        {% for field in formulario %}
+            <div class="purchase-field">
+                <label for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                </label>
+
+                {{ field }}
+
+                {% for error in field.errors %}
+                    <span class="field-error">{{ error }}</span>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <div class="quick-links">
+            <button type="submit" class="button primary">
+                Guardar cambios
+            </button>
+            <a class="button outline" href="{% url 'compra_detalle' compra.pk %}">
+                Cancelar
+            </a>
+        </div>
+    </form>
+</section>
+{% endblock %}
