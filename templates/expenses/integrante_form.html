@@ -1,10 +1,60 @@
-﻿{% extends "base.html" %}
+﻿
+{% extends "base.html" %}
+
+{% block titulo %}Agregar integrante | {{ grupo.nombre }}{% endblock %}
+
 {% block contenido %}
-<h1>Agregar integrante a {{ grupo.nombre }}</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ formulario.as_p }}
-    <button type="submit">Agregar</button>
-</form>
-<p><a href="{% url 'grupo_detalle' grupo.id %}">Volver al grupo</a></p>
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">
+            <a href="{% url 'grupo_detalle' grupo.id %}">
+                {{ grupo.nombre }}
+            </a>
+        </span>
+        <h1>Agregar integrante</h1>
+        <p>Invita a otra persona a participar en los gastos del grupo.</p>
+    </div>
+</div>
+
+<section class="panel feature-panel edit-panel">
+    <h2>Datos del integrante</h2>
+
+    <form method="post" class="feature-form">
+        {% csrf_token %}
+
+        {% if formulario.non_field_errors %}
+            <div class="form-error">
+                {{ formulario.non_field_errors }}
+            </div>
+        {% endif %}
+
+        {% for field in formulario %}
+            <div class="purchase-field">
+                <label for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                </label>
+
+                {{ field }}
+
+                {% if field.help_text %}
+                    <small>{{ field.help_text }}</small>
+                {% endif %}
+
+                {% for error in field.errors %}
+                    <span class="field-error">{{ error }}</span>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <div class="quick-links">
+            <button type="submit" class="button primary">
+                Agregar integrante
+            </button>
+
+            <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
+                Volver al grupo
+            </a>
+        </div>
+    </form>
+</section>
 {% endblock %}

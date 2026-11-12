@@ -1,10 +1,11 @@
-
+﻿
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
+from decimal import Decimal
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.models import Usuario
@@ -17,7 +18,7 @@ from expenses.forms import (
     IntegranteForm,
     ItemForm,
 )
-from expenses.models import Compra, Grupo, Item
+from expenses.models import Compra, Grupo, Item, Membresia
 from expenses.services.compras import (
     agregar_integrante,
     registrar_compra,
@@ -527,4 +528,74 @@ def confirmar_anulacion_pago(request, pago_id):
         request,
         "expenses/confirmar_anulacion_pago.html",
         {"pago": pago},
+    )
+
+
+@login_required
+def dashboard_grupo(request, grupo_id):
+    grupo = _grupo_del_usuario(request, grupo_id)
+
+    compras_activas = Compra.objects.filter(
+        grupo=grupo,
+        anulada=False,
+    )
+
+    total_gastos = (
+        compras_activas.aggregate(total=Sum("total"))["total"]
+        or Decimal("0.00")
+    )
+
+    cantidad_items = Item.objects.filter(
+        compra__grupo=grupo,
+        compra__anulada=False,
+        anulada=False,
+    ).count()
+
+    pagos_activos = Pago.objects.filter(
+        grupo=grupo,
+        anulada=False,
+    )
+
+    cantidad_pagos = pagos_activos.count()
+
+    total_pagos = (
+        pagos_activos.aggregate(total=Sum("monto"))["total"]
+        or Decimal("0.00")
+    )
+
+    membresias = Membresia.objects.filter(
+        grupo=grupo,
+        activo=True,
+    ).select_related("usuario").order_by(
+        "usuario__first_name",
+        "usuario__email",
+    )
+
+    saldos = calcular_saldos(grupo)
+
+    filas_saldos = [
+        (
+            membresia.usuario,
+            saldos.get(membresia.usuario_id, Decimal("0.00")),
+        )
+        for membresia in membresias
+    ]
+
+    ultimas_compras = compras_activas.select_related(
+        "pagador"
+    ).order_by("-fecha", "-id")[:5]
+
+    return render(
+        request,
+        "expenses/grupo_dashboard.html",
+        {
+            "grupo": grupo,
+            "total_gastos": total_gastos,
+            "cantidad_items": cantidad_items,
+            "cantidad_pagos": cantidad_pagos,
+            "total_pagos": total_pagos,
+            "cantidad_integrantes": membresias.count(),
+            "filas_saldos": filas_saldos,
+            "ultimas_compras": ultimas_compras,
+        },
     )

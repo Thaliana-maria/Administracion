@@ -1,13 +1,66 @@
-<!DOCTYPE html>
-<html lang="es">
-<head><meta charset="UTF-8"><title>Iniciar sesión</title></head>
-<body>
-    <h1>Iniciar sesión</h1>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Ingresar</button>
-    </form>
-    <a href="{% url 'registro' %}">Crear cuenta</a>
-</body>
-</html>
+﻿
+
+{% extends "base.html" %}
+
+{% block titulo %}Iniciar sesión | ¿Quién gastó esto?{% endblock %}
+
+{% block contenido_auth %}
+<section class="auth-screen">
+    <div class="auth-brand">
+        <div class="brand-mark">QGE</div>
+        <div class="brand-copy">
+            <span class="auth-kicker">GASTOS COMPARTIDOS</span>
+            <h1>¿Quién gastó esto?</h1>
+            <p>
+                Organiza tus gastos compartidos, distribuye responsabilidades
+                y mantén las cuentas claras con tu grupo.
+            </p>
+        </div>
+    </div>
+
+    <div class="auth-side">
+        <div class="auth-form">
+            <h2>Bienvenido de nuevo</h2>
+            <p>Ingresa tus credenciales para continuar.</p>
+
+            <form method="post">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                    <div class="form-error">
+                        {{ form.non_field_errors }}
+                    </div>
+                {% endif %}
+
+                {% for field in form %}
+                    <div class="purchase-field">
+                        <label for="{{ field.id_for_label }}">
+                            {{ field.label }}
+                        </label>
+
+                        {{ field }}
+
+                        {% for error in field.errors %}
+                            <span class="field-error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+
+                {% if next %}
+                    <input type="hidden" name="next" value="{{ next }}">
+                {% endif %}
+
+                <button class="button primary" type="submit">
+                    Iniciar sesión
+                </button>
+            </form>
+
+            <p>
+                ¿No tienes una cuenta?
+                <a href="{% url 'registro' %}">Crear cuenta</a>
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}
+

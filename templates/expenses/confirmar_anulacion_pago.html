@@ -1,19 +1,57 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Confirmar anulación de pago</title>
-</head>
-<body>
-    <h1>Confirmar anulación de pago</h1>
-    <p>¿Anular el pago de {{ pago.deudor }} a {{ pago.acreedor }} por ${{ pago.monto }}?</p>
+
+{% extends "base.html" %}
+
+{% block titulo %}Confirmar anulación de pago{% endblock %}
+
+{% block contenido %}
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">Gestión de pagos</span>
+        <h1>Confirmar anulación</h1>
+        <p>Revisa los datos del movimiento antes de continuar.</p>
+    </div>
+</div>
+
+<section class="panel feature-panel">
+    <div class="danger-panel">
+        <h2>¿Deseas anular este pago?</h2>
+
+        <p>
+            Estás a punto de anular el pago de
+            <strong>{{ pago.deudor }}</strong>
+            a
+            <strong>{{ pago.acreedor }}</strong>,
+            por un valor de
+            <strong>$ {{ pago.monto|floatformat:2 }}</strong>.
+        </p>
+
+        <p>
+            Esta acción modificará el estado del pago, pero conservará
+            su registro histórico.
+        </p>
+    </div>
+
     {% for message in messages %}
-        <p role="alert">{{ message }}</p>
+        <div class="message {{ message.tags }}" role="alert">
+            {{ message }}
+        </div>
     {% endfor %}
-    <form method="post">
+
+    <form method="post" class="quick-links">
         {% csrf_token %}
-        <button type="submit" name="confirmar" value="si">Confirmar anulación</button>
-        <a href="{% url 'inicio' %}">Cancelar</a>
+
+        <button
+            type="submit"
+            name="confirmar"
+            value="si"
+            class="button danger"
+        >
+            Confirmar anulación
+        </button>
+
+        <a class="button outline" href="{% url 'inicio' %}">
+            Cancelar
+        </a>
     </form>
-</body>
-</html>
+</section>
+{% endblock %}

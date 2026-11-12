@@ -1,21 +1,115 @@
-﻿{% extends "base.html" %}
-{% block contenido %}
-<h1>Registrar compra en {{ grupo.nombre }}</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ formulario.as_p }}
+﻿
 
-    <h2>Ítems</h2>
-    {{ formset.management_form }}
-    {{ formset.non_form_errors }}
-    {% for f in formset %}
-        <fieldset>
-            <legend>Ítem {{ forloop.counter }}</legend>
-            {{ f.as_p }}
-        </fieldset>
-    {% endfor %}
-    <p>El total de la compra se calcula con la suma de los ítems. Si eliges «Una persona», selecciona quién.</p>
-    <button type="submit">Guardar compra</button>
+{% extends "base.html" %}
+{% load static %}
+
+{% block titulo %}Registrar compra | {{ grupo.nombre }}{% endblock %}
+
+{% block contenido %}
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">{{ grupo.nombre }}</span>
+        <h1>Registrar una compra</h1>
+        <p>Registra quién pagó y distribuye los gastos entre los integrantes.</p>
+    </div>
+    <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
+        Volver al grupo
+    </a>
+</div>
+
+<form method="post" class="purchase-form" id="purchase-form">
+    {% csrf_token %}
+
+    {% if formulario.non_field_errors %}
+        <div class="form-error">
+            {{ formulario.non_field_errors }}
+        </div>
+    {% endif %}
+
+    <section class="panel feature-panel">
+        <h2>Información general</h2>
+        <div class="feature-form">
+            {% for field in formulario %}
+                <div class="purchase-field">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <small>{{ field.help_text }}</small>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <span class="field-error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel feature-panel">
+        <div class="section-heading">
+            <div>
+                <h2>Detalle de los ítems</h2>
+                <p>Agrega los productos o gastos que forman parte de la compra.</p>
+            </div>
+            <span class="badge-count">5 espacios disponibles</span>
+        </div>
+
+        {{ formset.management_form }}
+
+        {% if formset.non_form_errors %}
+            <div class="form-error">
+                {{ formset.non_form_errors }}
+            </div>
+        {% endif %}
+
+        <div class="purchase-items">
+            {% for f in formset %}
+                <fieldset class="purchase-item">
+                    <legend>Ítem {{ forloop.counter }}</legend>
+
+                    {% for hidden in f.hidden_fields %}
+                        {{ hidden }}
+                    {% endfor %}
+
+                    {% for field in f.visible_fields %}
+                        <div class="purchase-field">
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}
+                                <span class="field-error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </fieldset>
+            {% endfor %}
+        </div>
+
+        <p class="form-help">
+            Si seleccionas «Una persona», debes elegir el integrante beneficiario.
+        </p>
+    </section>
+
+    <section class="panel feature-panel purchase-summary">
+        <div>
+            <h2>Resumen de la compra</h2>
+            <p>El total se calcula sumando los valores de los ítems ingresados.</p>
+        </div>
+        <div class="live-total">
+            <span>Total estimado</span>
+            <strong id="purchase-total">$ 0</strong>
+        </div>
+    </section>
+
+    <div class="quick-links">
+        <button type="submit" class="button primary">
+            Guardar compra
+        </button>
+        <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
+            Cancelar
+        </a>
+    </div>
 </form>
-<p><a href="{% url 'grupo_detalle' grupo.id %}">Volver al grupo</a></p>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/compra.js' %}"></script>
 {% endblock %}
