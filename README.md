@@ -54,8 +54,8 @@ Resultado de la última ejecución: 17 pruebas aprobadas.
 
 ## Desarrollo por partes
 
-La Parte 1 comprende la estructura inicial, autenticación, modelos iniciales, distribución de gastos mediante RN-05, cálculo de saldos y pruebas automatizadas.
+La Parte 1 es la estructura inicial, autenticación, modelos iniciales, distribución de gastos mediante RN-05, cálculo de saldos y pruebas automatizadas.
 
-Las demás funcionalidades serán desarrolladas por los integrantes del equipo e integradas en este mismo proyecto.
+Las demás funcionalidades serán desarrolladas por los demàs integrantes del equipo e integradas en este mismo proyecto.
 
-El equipo trabaja sobre un único proyecto y repositorio, sin duplicar modelos ni crear proyectos separados.
+
