@@ -1,0 +1,139 @@
+﻿{% extends "base.html" %}
+
+{% block titulo %}Dashboard | {{ grupo.nombre }}{% endblock %}
+
+{% block contenido %}
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">{{ grupo.nombre }}</span>
+        <h1>Dashboard del grupo</h1>
+        <p>Resumen general de actividad y movimientos.</p>
+    </div>
+    <a class="button primary" href="{% url 'compra_nueva' grupo.id %}">
+        Registrar compra
+    </a>
+</div>
+
+<section class="stats-grid">
+    <article class="panel stat">
+        <small>Gastos del grupo</small>
+        <strong>$ {{ total_gastos|floatformat:2 }}</strong>
+        <span>Total de compras activas</span>
+    </article>
+
+    <article class="panel stat">
+        <small>Ítems registrados</small>
+        <strong>{{ cantidad_items }}</strong>
+        <span>Ítems no anulados</span>
+    </article>
+
+    <article class="panel stat">
+        <small>Pagos realizados</small>
+        <strong>{{ cantidad_pagos }}</strong>
+        <span>$ {{ total_pagos|floatformat:2 }} en pagos</span>
+    </article>
+
+    <article class="panel stat">
+        <small>Integrantes activos</small>
+        <strong>{{ cantidad_integrantes }}</strong>
+        <span>Miembros del grupo</span>
+    </article>
+</section>
+
+<section class="panel feature-panel">
+    <div class="section-heading">
+        <div>
+            <h2>Últimas compras</h2>
+            <p>Movimientos recientes del grupo.</p>
+        </div>
+        <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
+            Ver grupo
+        </a>
+    </div>
+
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Descripción</th>
+                    <th>Fecha</th>
+                    <th>Pagador</th>
+                    <th>Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for compra in ultimas_compras %}
+                <tr>
+                    <td>
+                        <a href="{% url 'compra_detalle' compra.id %}">
+                            {{ compra.descripcion|default:"Compra" }}
+                        </a>
+                    </td>
+                    <td>{{ compra.fecha|date:"d/m/Y" }}</td>
+                    <td>{{ compra.pagador.get_full_name|default:compra.pagador.email }}</td>
+                    <td>$ {{ compra.total|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4">Todavía no hay compras registradas.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="panel feature-panel">
+    <div class="section-heading">
+        <div>
+            <h2>Saldos de los integrantes</h2>
+            <p>Estado financiero calculado con los movimientos activos.</p>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Integrante</th>
+                    <th>Saldo</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for usuario, saldo in filas_saldos %}
+                <tr>
+                    <td>{{ usuario.get_full_name|default:usuario.email }}</td>
+                    <td>$ {{ saldo|floatformat:2 }}</td>
+                    <td>
+                        {% if saldo > 0 %}
+                            A favor
+                        {% elif saldo < 0 %}
+                            Pendiente
+                        {% else %}
+                            Equilibrado
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3">No hay integrantes activos.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<div class="quick-links">
+    <a class="button primary" href="{% url 'compra_nueva' grupo.id %}">
+        Registrar una compra
+    </a>
+    <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
+        Ver detalles del grupo
+    </a>
+    <a class="button outline" href="{% url 'grupos' %}">
+        Volver a mis grupos
+    </a>
+</div>
+{% endblock %}

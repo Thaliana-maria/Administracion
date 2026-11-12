@@ -1,0 +1,59 @@
+
+
+{% extends "base.html" %}
+
+{% block titulo %}Editar pago #{{ pago.pk }}{% endblock %}
+
+{% block contenido %}
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">Edición de pago</span>
+        <h1>Editar pago #{{ pago.pk }}</h1>
+        <p>Actualiza el monto y la fecha del movimiento.</p>
+    </div>
+    <a class="button outline" href="{% url 'grupo_detalle' pago.grupo_id %}">
+        Volver al grupo
+    </a>
+</div>
+
+<section class="panel feature-panel edit-panel">
+    <h2>Información del pago</h2>
+
+    <form method="post" class="feature-form">
+        {% csrf_token %}
+
+        {% if formulario.non_field_errors %}
+            <div class="form-error">
+                {{ formulario.non_field_errors }}
+            </div>
+        {% endif %}
+
+        {% for field in formulario %}
+            <div class="purchase-field">
+                <label for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                </label>
+
+                {{ field }}
+
+                {% if field.help_text %}
+                    <small>{{ field.help_text }}</small>
+                {% endif %}
+
+                {% for error in field.errors %}
+                    <span class="field-error">{{ error }}</span>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <div class="quick-links">
+            <button type="submit" class="button primary">
+                Guardar cambios
+            </button>
+            <a class="button outline" href="{% url 'grupo_detalle' pago.grupo_id %}">
+                Cancelar
+            </a>
+        </div>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,57 @@
+﻿{% extends "base.html" %}
+
+{% block titulo %}Inicio | ¿Quién gastó esto?{% endblock %}
+
+{% block contenido %}
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">Panel principal</span>
+        <h1>¡Bienvenido, {{ user.get_full_name|default:user.email }}!</h1>
+        <p>Administra tus grupos y consulta sus movimientos.</p>
+    </div>
+    <a class="button primary" href="{% url 'grupo_nuevo' %}">
+        Crear grupo
+    </a>
+</div>
+
+<section class="feature-panel">
+    <div class="section-heading">
+        <div>
+            <h2>Mis grupos</h2>
+            <p>Grupos a los que perteneces actualmente.</p>
+        </div>
+        <a class="button outline" href="{% url 'grupos' %}">
+            Ver todos
+        </a>
+    </div>
+
+    <div class="groups-grid">
+        {% for grupo in grupos %}
+        <article class="panel group-entry">
+            <div>
+                <h3>{{ grupo.nombre }}</h3>
+                <p>Grupo de gastos compartidos</p>
+            </div>
+            <div class="quick-links">
+                <a class="button primary group-open"
+                   href="{% url 'grupo_dashboard' grupo.id %}">
+                    Dashboard
+                </a>
+                <a class="button outline"
+                   href="{% url 'grupo_detalle' grupo.id %}">
+                    Ver detalles
+                </a>
+            </div>
+        </article>
+        {% empty %}
+        <div class="panel">
+            <h3>Aún no perteneces a ningún grupo</h3>
+            <p>Crea un grupo para comenzar a registrar y organizar gastos compartidos.</p>
+            <a class="button primary" href="{% url 'grupo_nuevo' %}">
+                Crear mi primer grupo
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

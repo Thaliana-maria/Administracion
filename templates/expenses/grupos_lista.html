@@ -1,0 +1,48 @@
+﻿{% extends "base.html" %}
+
+{% block titulo %}Mis grupos | ¿Quién gastó esto?{% endblock %}
+
+{% block contenido %}
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">Organización</span>
+        <h1>Mis grupos</h1>
+        <p>Consulta y administra tus grupos de gastos compartidos.</p>
+    </div>
+
+    <a class="button primary" href="{% url 'grupo_nuevo' %}">
+        Crear grupo
+    </a>
+</div>
+
+<section class="groups-grid">
+    {% for grupo in grupos %}
+    <article class="panel group-entry">
+        <div>
+            <h2>{{ grupo.nombre }}</h2>
+            <p>Grupo de gastos compartidos</p>
+        </div>
+
+        <div class="quick-links">
+            <a class="button primary group-open"
+               href="{% url 'grupo_dashboard' grupo.id %}">
+                Dashboard
+            </a>
+
+            <a class="button outline"
+               href="{% url 'grupo_detalle' grupo.id %}">
+                Ver detalles
+            </a>
+        </div>
+    </article>
+    {% empty %}
+    <article class="panel">
+        <h2>Aún no tienes grupos</h2>
+        <p>Crea tu primer grupo para comenzar a organizar gastos.</p>
+        <a class="button primary" href="{% url 'grupo_nuevo' %}">
+            Crear mi primer grupo
+        </a>
+    </article>
+    {% endfor %}
+</section>
+{% endblock %}

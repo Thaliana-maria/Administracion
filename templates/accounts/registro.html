@@ -1,0 +1,43 @@
+﻿
+{% extends "base.html" %}
+
+{% block titulo %}Crear cuenta | ¿Quién gastó esto?{% endblock %}
+
+{% block contenido_auth %}
+<section class="auth-screen register-screen">
+    <div class="auth-brand">
+        <div class="brand-mark">QGE</div>
+        <div class="brand-copy">
+            <span class="auth-kicker">GASTOS COMPARTIDOS</span>
+            <h1>¿Quién gastó esto?</h1>
+            <p>
+                Organiza tus gastos compartidos, distribuye responsabilidades
+                y mantén las cuentas claras con tu grupo.
+            </p>
+        </div>
+    </div>
+
+    <div class="auth-side">
+        <div class="auth-form">
+            <h2>Crear una cuenta</h2>
+            <p>Completa tus datos para comenzar.</p>
+
+            <form method="post">
+                {% csrf_token %}
+
+                {{ formulario.as_p }}
+
+                <button class="button primary" type="submit">
+                    Crear mi cuenta
+                </button>
+            </form>
+
+            <p>
+                ¿Ya tienes una cuenta?
+                <a href="{% url 'login' %}">Iniciar sesión</a>
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
