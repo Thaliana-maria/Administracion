@@ -1,17 +1,59 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Editar pago</title>
-</head>
-<body>
-    <h1>Editar pago {{ pago.pk }}</h1>
-    <form method="post">
+
+
+{% extends "base.html" %}
+
+{% block titulo %}Editar pago #{{ pago.pk }}{% endblock %}
+
+{% block contenido %}
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">Edición de pago</span>
+        <h1>Editar pago #{{ pago.pk }}</h1>
+        <p>Actualiza el monto y la fecha del movimiento.</p>
+    </div>
+    <a class="button outline" href="{% url 'grupo_detalle' pago.grupo_id %}">
+        Volver al grupo
+    </a>
+</div>
+
+<section class="panel feature-panel edit-panel">
+    <h2>Información del pago</h2>
+
+    <form method="post" class="feature-form">
         {% csrf_token %}
-        {{ formulario.non_field_errors }}
-        {{ formulario.as_p }}
-        <button type="submit">Guardar cambios</button>
+
+        {% if formulario.non_field_errors %}
+            <div class="form-error">
+                {{ formulario.non_field_errors }}
+            </div>
+        {% endif %}
+
+        {% for field in formulario %}
+            <div class="purchase-field">
+                <label for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                </label>
+
+                {{ field }}
+
+                {% if field.help_text %}
+                    <small>{{ field.help_text }}</small>
+                {% endif %}
+
+                {% for error in field.errors %}
+                    <span class="field-error">{{ error }}</span>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+        <div class="quick-links">
+            <button type="submit" class="button primary">
+                Guardar cambios
+            </button>
+            <a class="button outline" href="{% url 'grupo_detalle' pago.grupo_id %}">
+                Cancelar
+            </a>
+        </div>
     </form>
-    <p><a href="{% url 'inicio' %}">Volver al inicio</a></p>
-</body>
-</html>
+</section>
+{% endblock %}

@@ -1,18 +1,71 @@
-﻿<!DOCTYPE html>
+﻿{% load static %}
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block titulo %}¿Quién gastó esto?{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    {% block estilos %}{% endblock %}
 </head>
 <body>
-    <nav>
-        <a href="{% url 'inicio' %}">Inicio</a> |
-        <a href="{% url 'grupos' %}">Mis grupos</a>
-    </nav>
-    {% if messages %}
-        <ul>{% for mensaje in messages %}<li>{{ mensaje }}</li>{% endfor %}</ul>
-    {% endif %}
-    {% block contenido %}{% endblock %}
+
+{% if user.is_authenticated %}
+<div class="app-layout">
+    <aside class="sidebar">
+        <a class="brand" href="{% url 'inicio' %}">
+            ¿Quién gastó esto?
+        </a>
+
+        <nav class="side-nav">
+            <a href="{% url 'inicio' %}"
+               class="{% if request.resolver_match.url_name == 'inicio' %}active{% endif %}">
+                Inicio
+            </a>
+
+            <a href="{% url 'grupos' %}"
+               class="{% if request.resolver_match.url_name == 'grupos' %}active{% endif %}">
+                Mis grupos
+            </a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button class="logout-link" type="submit">
+                    Cerrar sesión
+                </button>
+            </form>
+
+            <div class="sidebar-user">
+                <strong>{{ user.get_full_name|default:user.email }}</strong>
+                <small>Cuenta activa</small>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        {% if messages %}
+        <div class="messages">
+            {% for mensaje in messages %}
+                <div class="message {{ mensaje.tags }}">
+                    {{ mensaje }}
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% block contenido %}{% endblock %}
+    </main>
+</div>
+
+{% else %}
+    <main class="auth-container">
+        {% block contenido_auth %}{% endblock %}
+    </main>
+{% endif %}
+
+{% block scripts %}{% endblock %}
+
 </body>
 </html>

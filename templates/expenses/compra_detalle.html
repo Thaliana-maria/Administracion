@@ -1,16 +1,133 @@
-﻿{% extends "base.html" %}
-{% block contenido %}
-<h1>Compra #{{ compra.id }}</h1>
-<p>Grupo: <a href="{% url 'grupo_detalle' compra.grupo.id %}">{{ compra.grupo.nombre }}</a></p>
-<p>Fecha: {{ compra.fecha }} | Pagó: {{ compra.pagador.get_full_name|default:compra.pagador.email }} | Total: {{ compra.total }}</p>
-{% if compra.descripcion %}<p>{{ compra.descripcion }}</p>{% endif %}
+﻿
+{% extends "base.html" %}
 
-{% for item in items %}
-    <h3>{{ item.descripcion }} - {{ item.valor }}</h3>
-    <ul>
-    {% for asignacion in item.asignaciones.all %}
-        <li>{{ asignacion.beneficiario.get_full_name|default:asignacion.beneficiario.email }}: {{ asignacion.valor_asignado }}</li>
-    {% endfor %}
-    </ul>
-{% endfor %}
+{% block titulo %}Compra #{{ compra.id }} | {{ compra.grupo.nombre }}{% endblock %}
+
+{% block contenido %}
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">
+            <a href="{% url 'grupo_detalle' compra.grupo.id %}">
+                {{ compra.grupo.nombre }}
+            </a>
+            / Compra #{{ compra.id }}
+        </span>
+        <h1>Detalle de la compra</h1>
+        <p>Consulta los productos y la distribución de los gastos.</p>
+    </div>
+    <a class="button outline" href="{% url 'grupo_detalle' compra.grupo.id %}">
+        Volver al grupo
+    </a>
+</div>
+
+<section class="stats-grid purchase-detail-stats">
+    <article class="panel stat">
+        <small>Total de la compra</small>
+        <strong>$ {{ compra.total|floatformat:2 }}</strong>
+        <span>Valor registrado</span>
+    </article>
+
+    <article class="panel stat">
+        <small>Fecha</small>
+        <strong>{{ compra.fecha|date:"d/m/Y" }}</strong>
+        <span>Fecha del movimiento</span>
+    </article>
+
+    <article class="panel stat">
+        <small>Pagador</small>
+        <strong class="purchase-person">
+            {{ compra.pagador.get_full_name|default:compra.pagador.email }}
+        </strong>
+        <span>Persona que realizó el pago</span>
+    </article>
+
+    <article class="panel stat">
+        <small>Ítems</small>
+        <strong>{{ items|length }}</strong>
+        <span>Conceptos registrados</span>
+    </article>
+</section>
+
+<section class="panel feature-panel">
+    <h2>Información de la compra</h2>
+
+    <div class="purchase-information">
+        <div>
+            <small>Grupo</small>
+            <strong>{{ compra.grupo.nombre }}</strong>
+        </div>
+
+        <div>
+            <small>Descripción</small>
+            <strong>{{ compra.descripcion|default:"Sin descripción" }}</strong>
+        </div>
+    </div>
+</section>
+
+<section class="panel feature-panel">
+    <div class="section-heading">
+        <div>
+            <h2>Detalle de los ítems</h2>
+            <p>Distribución del valor entre los beneficiarios.</p>
+        </div>
+    </div>
+
+    <div class="purchase-items-detail">
+        {% for item in items %}
+            <article class="purchase-item-detail">
+                <div class="section-heading">
+                    <div>
+                        <span class="breadcrumb">Ítem {{ forloop.counter }}</span>
+                        <h3>{{ item.descripcion }}</h3>
+                    </div>
+                    <strong class="purchase-item-value">
+                        $ {{ item.valor|floatformat:2 }}
+                    </strong>
+                </div>
+
+                <h4>Beneficiarios y valores asignados</h4>
+
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Beneficiario</th>
+                                <th>Valor asignado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for asignacion in item.asignaciones.all %}
+                                <tr>
+                                    <td>
+                                        {{ asignacion.beneficiario.get_full_name|default:asignacion.beneficiario.email }}
+                                    </td>
+                                    <td>
+                                        $ {{ asignacion.valor_asignado|floatformat:2 }}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="2">
+                                        No hay asignaciones registradas.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        {% empty %}
+            <p>No hay ítems registrados en esta compra.</p>
+        {% endfor %}
+    </div>
+</section>
+
+<div class="quick-links">
+    <a class="button primary" href="{% url 'grupo_dashboard' compra.grupo.id %}">
+        Ir al dashboard
+    </a>
+    <a class="button outline" href="{% url 'grupo_detalle' compra.grupo.id %}">
+        Volver al grupo
+    </a>
+</div>
 {% endblock %}

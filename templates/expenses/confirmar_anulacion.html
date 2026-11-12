@@ -1,20 +1,55 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Confirmar anulación</title>
-</head>
-<body>
-    <h1>Confirmar anulación de compra</h1>
-    <p>¿Deseas anular la compra {{ compra.id }} por ${{ compra.total }}?</p>
-    <p>La compra, sus ítems y asignaciones se conservarán en el historial. Los pagos existentes no se borrarán.</p>
+
+{% extends "base.html" %}
+
+{% block titulo %}Confirmar anulación de compra{% endblock %}
+
+{% block contenido %}
+<div class="page-heading">
+    <div>
+        <span class="breadcrumb">Gestión de compras</span>
+        <h1>Confirmar anulación</h1>
+        <p>Revisa la información antes de continuar.</p>
+    </div>
+</div>
+
+<section class="panel feature-panel">
+    <div class="danger-panel">
+        <h2>¿Deseas anular esta compra?</h2>
+
+        <p>
+            Estás a punto de anular la compra
+            <strong>#{{ compra.id }}</strong>,
+            por un valor de
+            <strong>$ {{ compra.total|floatformat:2 }}</strong>.
+        </p>
+
+        <p>
+            La compra, sus ítems y asignaciones se conservarán en el
+            historial. Los pagos existentes no se borrarán.
+        </p>
+    </div>
+
     {% for message in messages %}
-        <p role="alert">{{ message }}</p>
+        <div class="message {{ message.tags }}" role="alert">
+            {{ message }}
+        </div>
     {% endfor %}
-    <form method="post">
+
+    <form method="post" class="quick-links">
         {% csrf_token %}
-        <button type="submit" name="confirmar" value="si">Confirmar anulación</button>
-        <a href="{% url 'inicio' %}">Cancelar</a>
+
+        <button
+            type="submit"
+            name="confirmar"
+            value="si"
+            class="button danger"
+        >
+            Confirmar anulación
+        </button>
+
+        <a class="button outline" href="{% url 'inicio' %}">
+            Cancelar
+        </a>
     </form>
-</body>
-</html>
+</section>
+{% endblock %}
