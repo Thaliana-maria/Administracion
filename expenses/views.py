@@ -46,12 +46,15 @@ from ledger.services.saldos import calcular_saldos
 FILAS_ITEMS = 5
 
 
+
 def _grupo_del_usuario(request, grupo_id):
-    """Devuelve el grupo solo si el usuario es integrante."""
     return get_object_or_404(
         Grupo,
         id=grupo_id,
         miembros__usuario=request.user,
+        miembros__activo=True,
+    
+
     )
 
 
