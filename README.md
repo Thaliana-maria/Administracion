@@ -50,7 +50,7 @@ Ejecutar todas las pruebas:
 
    python manage.py test
 
-Resultado de la última ejecución: 17 pruebas aprobadas.
+Resultado de la última ejecución: 64 pruebas aprobadas.
 
 ## Desarrollo por partes
 
@@ -59,3 +59,5 @@ La Parte 1 comprende la estructura inicial, autenticación, modelos iniciales, d
 Las demás funcionalidades serán desarrolladas por los integrantes del equipo e integradas en este mismo proyecto.
 
 El equipo trabaja sobre un único proyecto y repositorio, sin duplicar modelos ni crear proyectos separados.
+
+Las asignaciones de cada integrante se divide entre ramas para una facil distribucion del proyecto, por consiguiente todas las ramas se fusionan en la rama develop hasta la cual aun se hacer modificaciones, por ultimo el proyecto culminado estara fusionado en la rama main con todo su historial.

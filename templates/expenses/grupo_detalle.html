@@ -1,4 +1,5 @@
-﻿{% extends "base.html" %}
+﻿
+{% extends "base.html" %}
 
 {% block titulo %}{{ grupo.nombre }} | Detalles del grupo{% endblock %}
 
@@ -19,9 +20,13 @@
     <a class="button primary" href="{% url 'compra_nueva' grupo.id %}">
         Registrar compra
     </a>
+
+    {% if puede_gestionar %}
     <a class="button outline" href="{% url 'integrante_nuevo' grupo.id %}">
         Agregar integrante
     </a>
+    {% endif %}
+
     <a class="button outline" href="{% url 'grupos' %}">
         Volver a mis grupos
     </a>
@@ -45,10 +50,13 @@
                         <th>Estado</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     {% for usuario, saldo in filas %}
                     <tr>
-                        <td>{{ usuario.get_full_name|default:usuario.email }}</td>
+                        <td>
+                            {{ usuario.get_full_name|default:usuario.email }}
+                        </td>
                         <td>$ {{ saldo|floatformat:2 }}</td>
                         <td>
                             {% if saldo > 0 %}
@@ -62,7 +70,9 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="3">No hay integrantes registrados.</td>
+                        <td colspan="3">
+                            No hay integrantes registrados.
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -88,6 +98,7 @@
                         <th>Total</th>
                     </tr>
                 </thead>
+
                 <tbody>
                     {% for compra in compras %}
                     <tr>
@@ -97,12 +108,16 @@
                                 {{ compra.descripcion|default:"Compra" }}
                             </a>
                         </td>
-                        <td>{{ compra.pagador.get_full_name|default:compra.pagador.email }}</td>
+                        <td>
+                            {{ compra.pagador.get_full_name|default:compra.pagador.email }}
+                        </td>
                         <td>$ {{ compra.total|floatformat:2 }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4">Aún no hay compras registradas.</td>
+                        <td colspan="4">
+                            Aún no hay compras registradas.
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -116,4 +131,99 @@
         </div>
     </section>
 </div>
+
+<section class="panel feature-panel">
+    <div class="section-heading">
+        <div>
+            <h2>Roles y permisos</h2>
+            <p>
+                Los roles se administran de manera independiente
+                para cada grupo.
+            </p>
+        </div>
+    </div>
+
+    {% if puede_gestionar %}
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Integrante</th>
+                        <th>Correo</th>
+                        <th>Rol actual</th>
+                        {% if puede_gestionar %}
+                        <th>Administrar rol</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for membresia in membresias %}
+                    <tr>
+                        <td>
+                            {{ membresia.usuario.get_full_name|default:membresia.usuario.email }}
+                        </td>
+
+                        <td>{{ membresia.usuario.email }}</td>
+
+                        <td>
+                            {% if membresia.usuario_id == grupo.creador_id %}
+                                Administrador (creador)
+                            {% elif membresia.rol == "administrador" %}
+                                Administrador
+                            {% else %}
+                                Miembro
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            {% if membresia.usuario_id == grupo.creador_id %}
+                                El creador conserva la administración.
+                            {% else %}
+                                <form
+                                    method="post"
+                                    action="{% url 'cambiar_rol_integrante' grupo.id membresia.usuario_id %}"
+                                >
+                                    {% csrf_token %}
+
+                                    <select name="rol" required>
+                                        <option
+                                            value="miembro"
+                                            {% if membresia.rol == "miembro" %}selected{% endif %}
+                                        >
+                                            Miembro
+                                        </option>
+
+                                        <option
+                                            value="administrador"
+                                            {% if membresia.rol == "administrador" %}selected{% endif %}
+                                        >
+                                            Administrador
+                                        </option>
+                                    </select>
+
+                                    <button class="button outline" type="submit">
+                                        Guardar rol
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4">
+                            No hay membresías registradas.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>
+            Solo los administradores pueden consultar y modificar
+            la asignación de roles.
+        </p>
+    {% endif %}
+</section>
 {% endblock %}

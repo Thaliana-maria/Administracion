@@ -1,4 +1,5 @@
-﻿{% extends "base.html" %}
+﻿
+{% extends "base.html" %}
 
 {% block titulo %}Dashboard | {{ grupo.nombre }}{% endblock %}
 
@@ -9,6 +10,7 @@
         <h1>Dashboard del grupo</h1>
         <p>Resumen general de actividad y movimientos.</p>
     </div>
+
     <a class="button primary" href="{% url 'compra_nueva' grupo.id %}">
         Registrar compra
     </a>
@@ -46,6 +48,7 @@
             <h2>Últimas compras</h2>
             <p>Movimientos recientes del grupo.</p>
         </div>
+
         <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
             Ver grupo
         </a>
@@ -61,6 +64,7 @@
                     <th>Valor</th>
                 </tr>
             </thead>
+
             <tbody>
                 {% for compra in ultimas_compras %}
                 <tr>
@@ -70,12 +74,16 @@
                         </a>
                     </td>
                     <td>{{ compra.fecha|date:"d/m/Y" }}</td>
-                    <td>{{ compra.pagador.get_full_name|default:compra.pagador.email }}</td>
+                    <td>
+                        {{ compra.pagador.get_full_name|default:compra.pagador.email }}
+                    </td>
                     <td>$ {{ compra.total|floatformat:2 }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="4">Todavía no hay compras registradas.</td>
+                    <td colspan="4">
+                        Todavía no hay compras registradas.
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -100,10 +108,13 @@
                     <th>Estado</th>
                 </tr>
             </thead>
+
             <tbody>
                 {% for usuario, saldo in filas_saldos %}
                 <tr>
-                    <td>{{ usuario.get_full_name|default:usuario.email }}</td>
+                    <td>
+                        {{ usuario.get_full_name|default:usuario.email }}
+                    </td>
                     <td>$ {{ saldo|floatformat:2 }}</td>
                     <td>
                         {% if saldo > 0 %}
@@ -117,7 +128,9 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="3">No hay integrantes activos.</td>
+                    <td colspan="3">
+                        No hay integrantes activos.
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -125,13 +138,72 @@
     </div>
 </section>
 
+<section class="panel feature-panel">
+    <div class="section-heading">
+        <div>
+            <h2>Simplificación de deudas</h2>
+            <p>
+                Propuesta de transferencias para equilibrar los saldos
+                con el menor número de movimientos.
+            </p>
+        </div>
+    </div>
+
+    <p>
+        Estas transferencias son recomendaciones. No registran pagos,
+        no modifican obligaciones y no cambian los saldos del grupo.
+    </p>
+
+    {% if error_simplificacion %}
+        <p class="message error">
+            No fue posible calcular las transferencias:
+            {{ error_simplificacion }}
+        </p>
+    {% elif transferencias_sugeridas %}
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Deudor</th>
+                        <th>Acreedor</th>
+                        <th>Transferencia sugerida</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for transferencia in transferencias_sugeridas %}
+                    <tr>
+                        <td>
+                            {{ transferencia.deudor.get_full_name|default:transferencia.deudor.email }}
+                        </td>
+                        <td>
+                            {{ transferencia.acreedor.get_full_name|default:transferencia.acreedor.email }}
+                        </td>
+                        <td>
+                            $ {{ transferencia.monto|floatformat:2 }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>
+            Los saldos del grupo están equilibrados.
+            No se necesitan transferencias sugeridas.
+        </p>
+    {% endif %}
+</section>
+
 <div class="quick-links">
     <a class="button primary" href="{% url 'compra_nueva' grupo.id %}">
         Registrar una compra
     </a>
+
     <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
         Ver detalles del grupo
     </a>
+
     <a class="button outline" href="{% url 'grupos' %}">
         Volver a mis grupos
     </a>

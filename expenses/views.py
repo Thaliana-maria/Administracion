@@ -1,11 +1,11 @@
-﻿
+from decimal import Decimal
+
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
-from decimal import Decimal
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.models import Usuario
@@ -25,8 +25,10 @@ from expenses.services.compras import (
     registrar_grupo,
 )
 from expenses.services.permisos import (
+    exigir_miembro,
     exigir_puede_editar_compra,
     exigir_puede_editar_pago,
+    es_administrador,
 )
 from expenses.services.reparto import repartir
 from expenses.services.registros import (
@@ -41,43 +43,81 @@ from ledger.services.obligaciones import (
     actualizar_pago,
 )
 from ledger.services.saldos import calcular_saldos
+from ledger.services.simplificacion import simplificar_deudas
 
 
 FILAS_ITEMS = 5
 
 
 def _grupo_del_usuario(request, grupo_id):
-    """Devuelve el grupo solo si el usuario es integrante."""
+    """
+    Devuelve el grupo si el usuario es su creador
+    o tiene una membresía activa.
+    """
+
     return get_object_or_404(
-        Grupo,
-        id=grupo_id,
-        miembros__usuario=request.user,
+        Grupo.objects.filter(
+            Q(creador=request.user)
+            | Q(
+                miembros__usuario=request.user,
+                miembros__activo=True,
+            )
+        ).distinct(),
+        pk=grupo_id,
     )
 
 
 def _miembros(grupo):
+    """
+    Obtiene los integrantes activos y garantiza que
+    el creador esté incluido.
+    """
+
     return Usuario.objects.filter(
-        membresia__grupo=grupo
-    ).order_by("first_name", "email")
+        Q(
+            membresia__grupo=grupo,
+            membresia__activo=True,
+        )
+        | Q(pk=grupo.creador_id)
+    ).distinct().order_by(
+        "first_name",
+        "last_name",
+        "email",
+    )
 
 
 @login_required
 def inicio(request):
     grupos = Grupo.objects.filter(
         Q(creador=request.user)
-        | Q(miembros__usuario=request.user, miembros__activo=True)
+        | Q(
+            miembros__usuario=request.user,
+            miembros__activo=True,
+        )
     ).distinct()
 
-    return render(request, "inicio.html", {"grupos": grupos})
+    return render(
+        request,
+        "inicio.html",
+        {"grupos": grupos},
+    )
 
 
 @login_required
 def lista_grupos(request):
     grupos = Grupo.objects.filter(
-        miembros__usuario=request.user
-    ).order_by("nombre")
+        Q(creador=request.user)
+        | Q(
+            miembros__usuario=request.user,
+            miembros__activo=True,
+        )
+    ).distinct().order_by("nombre")
 
-    return render(request, "expenses/grupos_lista.html", {"grupos": grupos})
+    return render(
+        request,
+        "expenses/grupos_lista.html",
+        {"grupos": grupos},
+    )
 
 
 @login_required
@@ -93,8 +133,14 @@ def crear_grupo(request):
         except ValidationError as error:
             formulario.add_error(None, error)
         else:
-            messages.success(request, "Grupo creado.")
-            return redirect("grupo_detalle", grupo_id=grupo.id)
+            messages.success(
+                request,
+                "Grupo creado. Ahora eres su administrador.",
+            )
+            return redirect(
+                "grupo_detalle",
+                grupo_id=grupo.id,
+            )
 
     return render(
         request,
@@ -106,17 +152,35 @@ def crear_grupo(request):
 @login_required
 def detalle_grupo(request, grupo_id):
     grupo = _grupo_del_usuario(request, grupo_id)
+
     miembros = _miembros(grupo)
     saldos = calcular_saldos(grupo)
 
     filas = [
-        (usuario, saldos.get(usuario.id))
+        (
+            usuario,
+            saldos.get(usuario.id, Decimal("0.00")),
+        )
         for usuario in miembros
     ]
 
+    membresias = list(
+        Membresia.objects.filter(
+            grupo=grupo,
+            activo=True,
+        ).select_related("usuario").order_by(
+            "usuario__first_name",
+            "usuario__last_name",
+            "usuario__email",
+        )
+    )
+
     compras = grupo.compras.select_related(
         "pagador"
-    ).order_by("-fecha", "-id")[:20]
+    ).order_by(
+        "-fecha",
+        "-id",
+    )[:20]
 
     return render(
         request,
@@ -125,13 +189,27 @@ def detalle_grupo(request, grupo_id):
             "grupo": grupo,
             "filas": filas,
             "compras": compras,
+            "miembros": miembros,
+            "membresias": membresias,
+            "puede_gestionar": es_administrador(
+                grupo,
+                request.user,
+            ),
         },
     )
+
 
 
 @login_required
 def agregar_integrante_vista(request, grupo_id):
     grupo = _grupo_del_usuario(request, grupo_id)
+
+    if not es_administrador(grupo, request.user):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied(
+            "Solo los administradores pueden agregar integrantes."
+        )
+
     formulario = IntegranteForm(request.POST or None)
 
     if request.method == "POST" and formulario.is_valid():
@@ -144,8 +222,14 @@ def agregar_integrante_vista(request, grupo_id):
         except ValidationError as error:
             formulario.add_error("email", error)
         else:
-            messages.success(request, "Integrante agregado.")
-            return redirect("grupo_detalle", grupo_id=grupo.id)
+            messages.success(
+                request,
+                "Integrante agregado correctamente.",
+            )
+            return redirect(
+                "grupo_detalle",
+                grupo_id=grupo.id,
+            )
 
     return render(
         request,
@@ -157,10 +241,12 @@ def agregar_integrante_vista(request, grupo_id):
     )
 
 
+
 @login_required
 def nueva_compra(request, grupo_id):
     grupo = _grupo_del_usuario(request, grupo_id)
     miembros = _miembros(grupo)
+
     ItemFormSet = forms.formset_factory(
         ItemForm,
         extra=FILAS_ITEMS,
@@ -171,6 +257,7 @@ def nueva_compra(request, grupo_id):
             request.POST,
             miembros=miembros,
         )
+
         formset = ItemFormSet(
             request.POST,
             form_kwargs={"miembros": miembros},
@@ -195,16 +282,21 @@ def nueva_compra(request, grupo_id):
             except ValidationError as error:
                 formulario.add_error(None, error)
             else:
-                messages.success(request, "Compra registrada.")
+                messages.success(
+                    request,
+                    "Compra registrada correctamente.",
+                )
                 return redirect(
                     "compra_detalle",
                     compra_id=compra.id,
                 )
+
     else:
         formulario = CompraForm(
             miembros=miembros,
             initial={"pagador": request.user},
         )
+
         formset = ItemFormSet(
             form_kwargs={"miembros": miembros},
         )
@@ -223,9 +315,16 @@ def nueva_compra(request, grupo_id):
 @login_required
 def detalle_compra(request, compra_id):
     compra = get_object_or_404(
-        Compra.objects.select_related("grupo", "pagador"),
-        id=compra_id,
-        grupo__miembros__usuario=request.user,
+        Compra.objects.select_related(
+            "grupo",
+            "pagador",
+        ),
+        pk=compra_id,
+    )
+
+    exigir_miembro(
+        compra.grupo_id,
+        request.user,
     )
 
     items = compra.items.prefetch_related(
@@ -240,6 +339,7 @@ def detalle_compra(request, compra_id):
             "items": items,
         },
     )
+
 
 
 @login_required
@@ -262,10 +362,13 @@ def cambiar_rol_integrante(request, grupo_id, miembro_id):
     else:
         messages.success(
             request,
-            "El rol del integrante fue actualizado.",
+            "El rol del integrante fue actualizado correctamente.",
         )
 
-    return redirect("inicio")
+    return redirect(
+        "grupo_detalle",
+        grupo_id=grupo_id,
+    )
 
 
 @login_required
@@ -276,7 +379,10 @@ def editar_compra(request, compra_id):
         pk=compra_id,
     )
 
-    exigir_puede_editar_compra(compra, request.user)
+    exigir_puede_editar_compra(
+        compra,
+        request.user,
+    )
 
     formulario = EditarCompraForm(
         request.POST or None,
@@ -297,7 +403,10 @@ def editar_compra(request, compra_id):
         except ValidationError as error:
             formulario.add_error(None, error)
         else:
-            messages.success(request, "La compra fue actualizada.")
+            messages.success(
+                request,
+                "La compra fue actualizada.",
+            )
             return redirect("inicio")
 
     return render(
@@ -321,7 +430,10 @@ def editar_item(request, item_id):
         pk=item_id,
     )
 
-    exigir_puede_editar_compra(item.compra, request.user)
+    exigir_puede_editar_compra(
+        item.compra,
+        request.user,
+    )
 
     formulario = EditarItemForm(
         request.POST or None,
@@ -330,7 +442,9 @@ def editar_item(request, item_id):
             "valor": item.valor,
             "beneficiarios": [
                 asignacion.beneficiario_id
-                for asignacion in item.asignaciones.filter(anulada=False)
+                for asignacion in item.asignaciones.filter(
+                    anulada=False
+                )
             ],
         },
         grupo=item.compra.grupo,
@@ -351,6 +465,7 @@ def editar_item(request, item_id):
                 descripcion=formulario.cleaned_data["descripcion"],
                 asignaciones=reparto,
             )
+
         except (ValidationError, ValueError) as error:
             formulario.add_error(None, error)
         else:
@@ -378,14 +493,20 @@ def confirmar_anulacion_compra(request, compra_id):
         pk=compra_id,
     )
 
-    exigir_puede_editar_compra(compra, request.user)
+    exigir_puede_editar_compra(
+        compra,
+        request.user,
+    )
 
     if request.method == "POST":
         if request.POST.get("confirmar") != "si":
             return redirect("inicio")
 
         try:
-            anular_compra(request.user, compra.pk)
+            anular_compra(
+                request.user,
+                compra.pk,
+            )
         except ValidationError as error:
             for mensaje in error.messages:
                 messages.error(request, mensaje)
@@ -401,10 +522,14 @@ def confirmar_anulacion_compra(request, compra_id):
             request,
             "La compra quedó anulada; los pagos e historial se conservaron.",
         )
+
         return redirect("inicio")
 
     if compra.anulada:
-        messages.error(request, "La compra ya está anulada.")
+        messages.error(
+            request,
+            "La compra ya está anulada.",
+        )
         return redirect("inicio")
 
     return render(
@@ -423,7 +548,10 @@ def anular_item_view(request, item_id):
     )
 
     try:
-        anular_item(request.user, item.pk)
+        anular_item(
+            request.user,
+            item.pk,
+        )
     except ValidationError as error:
         for mensaje in error.messages:
             messages.error(request, mensaje)
@@ -444,7 +572,10 @@ def editar_pago(request, pago_id):
         pk=pago_id,
     )
 
-    exigir_puede_editar_pago(pago, request.user)
+    exigir_puede_editar_pago(
+        pago,
+        request.user,
+    )
 
     formulario = EditarPagoForm(
         request.POST or None,
@@ -471,7 +602,9 @@ def editar_pago(request, pago_id):
             nuevas_aplicaciones = [
                 (
                     aplicacion.obligacion_id,
-                    monto_nuevo if len(aplicaciones) == 1 else aplicacion.monto,
+                    monto_nuevo
+                    if len(aplicaciones) == 1
+                    else aplicacion.monto,
                 )
                 for aplicacion in aplicaciones
             ]
@@ -487,7 +620,10 @@ def editar_pago(request, pago_id):
             except ValidationError as error:
                 formulario.add_error(None, error)
             else:
-                messages.success(request, "El pago fue actualizado.")
+                messages.success(
+                    request,
+                    "El pago fue actualizado.",
+                )
                 return redirect("inicio")
 
     return render(
@@ -508,11 +644,17 @@ def confirmar_anulacion_pago(request, pago_id):
         pk=pago_id,
     )
 
-    exigir_puede_editar_pago(pago, request.user)
+    exigir_puede_editar_pago(
+        pago,
+        request.user,
+    )
 
     if request.method == "POST" and request.POST.get("confirmar") == "si":
         try:
-            servicio_anular_pago(request.user, pago.pk)
+            servicio_anular_pago(
+                request.user,
+                pago.pk,
+            )
         except ValidationError as error:
             for mensaje in error.messages:
                 messages.error(request, mensaje)
@@ -533,7 +675,10 @@ def confirmar_anulacion_pago(request, pago_id):
 
 @login_required
 def dashboard_grupo(request, grupo_id):
-    grupo = _grupo_del_usuario(request, grupo_id)
+    grupo = _grupo_del_usuario(
+        request,
+        grupo_id,
+    )
 
     compras_activas = Compra.objects.filter(
         grupo=grupo,
@@ -541,7 +686,9 @@ def dashboard_grupo(request, grupo_id):
     )
 
     total_gastos = (
-        compras_activas.aggregate(total=Sum("total"))["total"]
+        compras_activas.aggregate(
+            total=Sum("total")
+        )["total"]
         or Decimal("0.00")
     )
 
@@ -559,15 +706,20 @@ def dashboard_grupo(request, grupo_id):
     cantidad_pagos = pagos_activos.count()
 
     total_pagos = (
-        pagos_activos.aggregate(total=Sum("monto"))["total"]
+        pagos_activos.aggregate(
+            total=Sum("monto")
+        )["total"]
         or Decimal("0.00")
     )
 
     membresias = Membresia.objects.filter(
         grupo=grupo,
         activo=True,
-    ).select_related("usuario").order_by(
+    ).select_related(
+        "usuario"
+    ).order_by(
         "usuario__first_name",
+        "usuario__last_name",
         "usuario__email",
     )
 
@@ -575,15 +727,61 @@ def dashboard_grupo(request, grupo_id):
 
     filas_saldos = [
         (
-            membresia.usuario,
-            saldos.get(membresia.usuario_id, Decimal("0.00")),
+            usuario,
+            saldos.get(
+                usuario.pk,
+                Decimal("0.00"),
+            ),
         )
-        for membresia in membresias
+        for usuario in _miembros(grupo)
     ]
 
     ultimas_compras = compras_activas.select_related(
         "pagador"
-    ).order_by("-fecha", "-id")[:5]
+    ).order_by(
+        "-fecha",
+        "-id",
+    )[:5]
+
+    # La simplificación solamente propone transferencias.
+    # No crea pagos ni modifica las obligaciones.
+    transferencias_sugeridas = []
+    error_simplificacion = None
+
+    try:
+        plan = simplificar_deudas(grupo)
+
+        ids_usuarios = {
+            transferencia["deudor_id"]
+            for transferencia in plan
+        } | {
+            transferencia["acreedor_id"]
+            for transferencia in plan
+        }
+
+        usuarios = Usuario.objects.in_bulk(ids_usuarios)
+
+        for transferencia in plan:
+            deudor = usuarios.get(
+                transferencia["deudor_id"]
+            )
+            acreedor = usuarios.get(
+                transferencia["acreedor_id"]
+            )
+
+            if deudor is None or acreedor is None:
+                continue
+
+            transferencias_sugeridas.append(
+                {
+                    "deudor": deudor,
+                    "acreedor": acreedor,
+                    "monto": transferencia["monto"],
+                }
+            )
+
+    except ValueError as error:
+        error_simplificacion = str(error)
 
     return render(
         request,
@@ -594,8 +792,14 @@ def dashboard_grupo(request, grupo_id):
             "cantidad_items": cantidad_items,
             "cantidad_pagos": cantidad_pagos,
             "total_pagos": total_pagos,
-            "cantidad_integrantes": membresias.count(),
+            "cantidad_integrantes": len(filas_saldos),
             "filas_saldos": filas_saldos,
             "ultimas_compras": ultimas_compras,
+            "transferencias_sugeridas": transferencias_sugeridas,
+            "error_simplificacion": error_simplificacion,
+            "puede_gestionar": es_administrador(
+                grupo,
+                request.user,
+            ),
         },
     )
