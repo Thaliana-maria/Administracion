@@ -329,7 +329,6 @@ flowchart TD
     H --> I[Consultar saldos]
 ```
 
-Por ejemplo, si tres integrantes comparten una compra de $30.000, a cada uno le corresponden $10.000. Si una sola persona pagó todo, las otras dos le deben $10.000 cada una. La regla RN-05 contempla el ajuste del redondeo al pagador cuando corresponde.
 
 ## Cálculo de saldos
 
@@ -346,12 +345,6 @@ Se requiere iniciar sesión para consultar los grupos. Los permisos dependen de 
 ## Rendimiento
 
 El proyecto utiliza consultas agrupadas para calcular los saldos, relaciones cargadas junto con los registros principales e índices en campos de búsqueda frecuente. En el dashboard se obtiene la cantidad y el total de pagos mediante una sola consulta. También se limita la lista de compras recientes para evitar cargar todo el historial.
-
-## Pruebas del sistema
-
-La última ejecución documentada antes de esta revisión registró **64 pruebas aprobadas**. Este resultado es histórico y debe volver a comprobarse después de los cambios.
-
-Las pruebas se encuentran en accounts/tests, expenses/tests y ledger/tests. Cubren autenticación, compras, reparto, permisos, edición y anulación de registros, obligaciones, saldos y simplificación de deudas.
 
 ## Organización del trabajo
 
