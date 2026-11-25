@@ -4,9 +4,10 @@ from functools import lru_cache
 from ledger.services.saldos import calcular_saldos
 
 
-def simplificar_deudas(grupo):
+def simplificar_deudas(grupo, *, saldos=None):
     """Calcula una liquidación con el menor número de transferencias."""
-    saldos = calcular_saldos(grupo)
+    if saldos is None:
+        saldos = calcular_saldos(grupo)
     centavos = tuple(
         (usuario_id, int(saldo * 100))
         for usuario_id, saldo in sorted(saldos.items())
