@@ -703,20 +703,12 @@ def dashboard_grupo(request, grupo_id):
         anulada=False,
     )
 
-    resumen_pagos = pagos_activos.aggregate(cantidad=Count("pk"), total=Sum("monto"))
+    resumen_pagos = pagos_activos.aggregate(
+        cantidad=Count("pk"),
+        total=Sum("monto"),
+    )
     cantidad_pagos = resumen_pagos["cantidad"]
     total_pagos = resumen_pagos["total"] or Decimal("0.00")
-
-    membresias = Membresia.objects.filter(
-        grupo=grupo,
-        activo=True,
-    ).select_related(
-        "usuario"
-    ).order_by(
-        "usuario__first_name",
-        "usuario__last_name",
-        "usuario__email",
-    )
 
     saldos = calcular_saldos(grupo)
 
@@ -742,7 +734,7 @@ def dashboard_grupo(request, grupo_id):
     error_simplificacion = None
 
     try:
-        plan = simplificar_deudas(grupo)
+        plan = simplificar_deudas(grupo, saldos=saldos)
 
         ids_usuarios = {
             transferencia["deudor_id"]
@@ -752,7 +744,13 @@ def dashboard_grupo(request, grupo_id):
             for transferencia in plan
         }
 
-        usuarios = Usuario.objects.in_bulk(ids_usuarios)
+        usuarios = {
+            usuario.pk: usuario
+            for usuario, _ in filas_saldos
+        }
+        usuarios.update(
+            Usuario.objects.in_bulk(ids_usuarios - usuarios.keys())
+        )
 
         for transferencia in plan:
             deudor = usuarios.get(
