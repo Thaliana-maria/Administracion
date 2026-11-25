@@ -4,7 +4,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.db.models import Q, Sum
+from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -426,7 +426,7 @@ def editar_item(request, item_id):
         Item.objects.select_related(
             "compra__grupo",
             "compra__pagador",
-        ).prefetch_related("asignaciones"),
+        ),
         pk=item_id,
     )
 
@@ -703,14 +703,9 @@ def dashboard_grupo(request, grupo_id):
         anulada=False,
     )
 
-    cantidad_pagos = pagos_activos.count()
-
-    total_pagos = (
-        pagos_activos.aggregate(
-            total=Sum("monto")
-        )["total"]
-        or Decimal("0.00")
-    )
+    resumen_pagos = pagos_activos.aggregate(cantidad=Count("pk"), total=Sum("monto"))
+    cantidad_pagos = resumen_pagos["cantidad"]
+    total_pagos = resumen_pagos["total"] or Decimal("0.00")
 
     membresias = Membresia.objects.filter(
         grupo=grupo,
@@ -743,8 +738,6 @@ def dashboard_grupo(request, grupo_id):
         "-id",
     )[:5]
 
-    # La simplificación solamente propone transferencias.
-    # No crea pagos ni modifica las obligaciones.
     transferencias_sugeridas = []
     error_simplificacion = None
 
