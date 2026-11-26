@@ -106,6 +106,7 @@ class Compensacion(models.Model):
     estado = models.CharField(max_length=12, choices=[("pendiente", "Pendiente"), ("aprobada", "Aprobada"), ("rechazada", "Rechazada"), ("cancelada", "Cancelada"), ("aplicada", "Aplicada")], default="pendiente")
     fecha = models.DateTimeField(auto_now_add=True)
     clave = models.UUIDField(unique=True)
+    fecha_aplicacion = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         constraints = [
