@@ -11,6 +11,7 @@ from expenses.models import (
     Grupo,
     Item,
     Membresia,
+    RevisionCompra,
 )
 from expenses.services.permisos import (
     es_administrador,
@@ -354,4 +355,11 @@ def registrar_compra(
         accion="crear",
     )
 
+    afectados = set(Asignacion.objects.filter(item__compra=compra).values_list("beneficiario_id", flat=True))
+    afectados.add(pagador.pk)
+    afectados.discard(registrado_por.pk)
+    RevisionCompra.objects.bulk_create([
+        RevisionCompra(compra=compra, usuario_id=usuario_id)
+        for usuario_id in afectados
+    ])
     return compra
