@@ -22,6 +22,7 @@ from expenses.forms import (
     CompraForm,
     EditarCompraForm,
     EditarItemForm,
+    EditarItemConjuntoForm,
     EditarPagoForm,
     GrupoForm,
     IntegranteForm,
@@ -414,7 +415,7 @@ def editar_compra(request, compra_id):
     items_activos = list(compra.items.filter(anulada=False).prefetch_related("asignaciones").order_by("pk"))
     editar_items = request.method == "POST"
     formularios_items = [
-        (item, EditarItemForm(
+        (item, EditarItemConjuntoForm(
             request.POST if editar_items else None,
             prefix=f"item-{item.pk}",
             grupo=compra.grupo,
