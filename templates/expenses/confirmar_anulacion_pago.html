@@ -12,7 +12,7 @@
     </div>
 </div>
 
-<section class="panel feature-panel">
+<section class="panel feature-panel confirmacion">
     <div class="danger-panel">
         <h2>¿Deseas anular este pago?</h2>
 
@@ -27,7 +27,7 @@
 
         <p>
             Esta acción modificará el estado del pago, pero conservará
-            su registro histórico.
+            su registro histórico. Si estaba confirmado, se restablecerán las obligaciones correspondientes.
         </p>
     </div>
 
@@ -49,7 +49,7 @@
             Confirmar anulación
         </button>
 
-        <a class="button outline" href="{% url 'inicio' %}">
+        <a class="button outline" href="{% url 'pagos_grupo' pago.grupo_id %}">
             Cancelar
         </a>
     </form>
