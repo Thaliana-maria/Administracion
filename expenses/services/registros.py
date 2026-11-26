@@ -13,6 +13,14 @@ from ledger.models import Obligacion
 
 
 def _exigir_sin_abonos(compra, asignaciones=None):
+    from ledger.models import TramoCompensacion
+
+    tramos = TramoCompensacion.objects.filter(obligacion__asignacion__item__compra=compra, compensacion__estado__in=["pendiente", "aprobada", "aplicada"])
+    if asignaciones is not None:
+        tramos = tramos.filter(obligacion__asignacion__in=asignaciones)
+    if tramos.exists():
+        raise ValidationError("La compra está vinculada a una compensación activa o aplicada.")
+
     obligaciones = Obligacion.objects.filter(
         asignacion__item__compra=compra,
         anulada=False,
