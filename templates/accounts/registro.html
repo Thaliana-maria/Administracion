@@ -6,21 +6,18 @@
 {% block contenido_auth %}
 <section class="auth-screen register-screen">
     <div class="auth-brand">
-        <div class="brand-mark">QGE</div>
         <div class="brand-copy">
             <span class="auth-kicker">GASTOS COMPARTIDOS</span>
             <h1>¿Quién gastó esto?</h1>
             <p>
-                Organiza tus gastos compartidos, distribuye responsabilidades
-                y mantén las cuentas claras con tu grupo.
+                Crea tu cuenta con correo y contraseña. Tu contraseña se guarda cifrada.
             </p>
         </div>
     </div>
 
     <div class="auth-side">
         <div class="auth-form">
-            <h2>Crear una cuenta</h2>
-            <p>Completa tus datos para comenzar.</p>
+            <h2>Crear cuenta</h2>
 
             <form method="post">
                 {% csrf_token %}
@@ -28,14 +25,13 @@
                 {{ formulario.as_p }}
 
                 <button class="button primary" type="submit">
-                    Crear mi cuenta
+                    Crear cuenta
                 </button>
             </form>
 
-            <p>
-                ¿Ya tienes una cuenta?
-                <a href="{% url 'login' %}">Iniciar sesión</a>
-            </p>
+            <a class="button outline full" href="{% url 'login' %}">
+                Ya tengo cuenta
+            </a>
         </div>
     </div>
 </section>
