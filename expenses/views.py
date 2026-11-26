@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Prefetch, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -1062,6 +1062,6 @@ def responder_compensacion_vista(request, grupo_id, compensacion_id):
 @login_required
 def compensaciones_grupo(request, grupo_id):
     grupo = _grupo_del_usuario(request, grupo_id)
-    solicitudes = grupo.compensaciones.select_related("deudor", "acreedor", "solicitante").prefetch_related("aprobaciones__usuario").order_by("-fecha", "-pk")
+    solicitudes = grupo.compensaciones.select_related("deudor", "acreedor", "solicitante").prefetch_related("aprobaciones__usuario", Prefetch("tramos", queryset=TramoCompensacion.objects.select_related("obligacion__deudor", "obligacion__acreedor").order_by("orden", "pk"))).order_by("-fecha", "-pk")
     pagina = Paginator(solicitudes, 20).get_page(request.GET.get("pagina"))
     return render(request, "expenses/compensaciones.html", {"grupo": grupo, "solicitudes": pagina})
