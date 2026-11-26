@@ -316,3 +316,45 @@ class PruebasPermisosYRegistros(TestCase):
             archivar_grupo(self.miembro, self.grupo.pk)
         self.grupo.refresh_from_db()
         self.assertFalse(self.grupo.archivado)
+
+
+    def test_edicion_integral_agrega_item_y_recalcula_total(self):
+        from expenses.services.registros import actualizar_items_compra
+
+        actualizar_items_compra(
+            self.pagador, self.compra.pk,
+            {self.item.pk: {"descripcion": "Mercado", "valor": Decimal("10000"),
+                            "beneficiarios": [self.pagador]}},
+            nuevos=[{"descripcion": "Aseo", "valor": Decimal("5000"),
+                     "beneficiarios": [self.pagador, self.miembro]}],
+            impuesto=Decimal("1000"), descuento=Decimal("500"),
+        )
+        self.compra.refresh_from_db()
+        self.assertEqual(self.compra.total, Decimal("15500"))
+        self.assertEqual(self.compra.items.filter(anulada=False).count(), 2)
+        nuevo = self.compra.items.get(descripcion="Aseo")
+        self.assertEqual(sum(nuevo.asignaciones.values_list("valor_asignado", flat=True)), 5000)
+
+    def test_edicion_integral_no_permite_retirar_todos_los_items(self):
+        from expenses.services.registros import actualizar_items_compra
+
+        with self.assertRaises(ValidationError):
+            actualizar_items_compra(self.pagador, self.compra.pk,
+                                    {self.item.pk: {"retirar": True}})
+        self.item.refresh_from_db()
+        self.assertFalse(self.item.anulada)
+
+    def test_edicion_integral_revierte_cambios_con_beneficiario_externo(self):
+        from expenses.services.registros import actualizar_items_compra
+
+        with self.assertRaises(ValidationError):
+            actualizar_items_compra(
+                self.pagador, self.compra.pk,
+                {self.item.pk: {"descripcion": "Cambio inválido", "valor": Decimal("20000"),
+                                "beneficiarios": [self.externo]}},
+            )
+        self.compra.refresh_from_db()
+        self.item.refresh_from_db()
+        self.assertEqual(self.compra.total, Decimal("10000"))
+        self.assertEqual(self.item.descripcion, "Mercado")
+        self.assertEqual(self.item.asignaciones.filter(anulada=False).count(), 1)
