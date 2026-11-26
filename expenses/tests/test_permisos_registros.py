@@ -124,7 +124,7 @@ class PruebasPermisosYRegistros(TestCase):
         self.compra.refresh_from_db()
         self.assertFalse(self.compra.anulada)
 
-    def test_anulacion_solicita_confirmacion_y_conserva_registros(self):
+    def test_anulacion_con_abonos_se_bloquea_y_conserva_registros(self):
         asignacion_pagador = self.item.asignaciones.get()
         asignacion_pagador.valor_asignado = 9000
         asignacion_pagador.save(update_fields=["valor_asignado"])
@@ -154,20 +154,20 @@ class PruebasPermisosYRegistros(TestCase):
         self.assertFalse(self.compra.anulada)
 
         respuesta = self.client.post(url, {"confirmar": "si"})
-        self.assertEqual(respuesta.status_code, 302)
+        self.assertEqual(respuesta.status_code, 400)
         self.compra.refresh_from_db()
         self.item.refresh_from_db()
         asignaciones = list(self.item.asignaciones.all())
         pago.refresh_from_db()
-        self.assertTrue(self.compra.anulada)
-        self.assertTrue(self.item.anulada)
-        self.assertTrue(all(asignacion.anulada for asignacion in asignaciones))
+        self.assertFalse(self.compra.anulada)
+        self.assertFalse(self.item.anulada)
+        self.assertTrue(all(not asignacion.anulada for asignacion in asignaciones))
         self.assertFalse(pago.anulada)
         aplicacion.refresh_from_db()
         self.assertFalse(aplicacion.anulada)
         self.assertEqual(asignaciones[0].valor_asignado + asignaciones[1].valor_asignado, 10000)
         self.assertTrue(
-            Historial.objects.filter(accion="anular_por_compra").count() >= 2
+            not Historial.objects.filter(accion="anular_por_compra").exists()
         )
         self.assertEqual(Decimal(self.compra.total), Decimal("10000"))
 
@@ -197,7 +197,7 @@ class PruebasPermisosYRegistros(TestCase):
             2,
         )
 
-    def test_interfaz_edita_pago_historico_y_guarda_historial(self):
+    def test_interfaz_edita_pago_pendiente_y_guarda_historial(self):
         pago = Pago.objects.create(
             grupo=self.grupo,
             deudor=self.pagador,
@@ -205,6 +205,7 @@ class PruebasPermisosYRegistros(TestCase):
             monto=1000,
             fecha=date.today(),
             registrado_por=self.pagador,
+            estado="pendiente",
         )
         self.client.force_login(self.pagador)
 
@@ -223,3 +224,19 @@ class PruebasPermisosYRegistros(TestCase):
                 accion="editar",
             ).exists()
         )
+
+
+    def test_edicion_integral_rechaza_version_desactualizada(self):
+        from expenses.services.registros import actualizar_items_compra, version_compra
+
+        version = version_compra(self.compra)
+        actualizar_compra(self.pagador, self.compra.pk, descripcion="Cambio previo")
+        with self.assertRaises(ValidationError):
+            actualizar_items_compra(
+                self.pagador, self.compra.pk,
+                {self.item.pk: {"descripcion": "Mercado", "valor": Decimal("10000"),
+                                "beneficiarios": [self.pagador]}},
+                version=version,
+            )
+        self.compra.refresh_from_db()
+        self.assertEqual(self.compra.descripcion, "Cambio previo")
