@@ -21,6 +21,7 @@ class UsuarioManager(BaseUserManager):
 class Usuario(AbstractUser):
     username = None
     email = models.EmailField(unique=True)
+    autorizacion_datos = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
