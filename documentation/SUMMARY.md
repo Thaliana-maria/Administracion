@@ -1,5 +1,6 @@
 # Table of contents
 
-* [Introducción](README.md)
-* [Arquitectura y Módulos](arquitectura-y-modulos.md)
+* [Introducción y Alcance](README.md)
+* [Requisitos Funcionales y No Funcionales](requisitos.md)
+* [Reglas de Negocio y Datos](reglas-y-datos.md)
 * [Instalación Local](instalacion.md)
