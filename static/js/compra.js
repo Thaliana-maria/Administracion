@@ -6,6 +6,45 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
     }
 
+    function mostrarReparto() {
+        const contenedor = document.getElementById("partes-compra");
+        const pagador = formulario.elements["pagador"];
+        if (!contenedor || !pagador) return;
+        const personas = Array.from(pagador.options).filter(opcion => opcion.value);
+        const partes = new Map(personas.map(persona => [persona.value, 0]));
+        const orden = personas.slice().sort((a, b) => {
+            if (a.value === pagador.value) return -1;
+            if (b.value === pagador.value) return 1;
+            return a.text.toLowerCase().localeCompare(b.text.toLowerCase());
+        });
+        let incompleto = false;
+        formulario.querySelectorAll(".purchase-item").forEach(fila => {
+            const valor = Number(fila.querySelector('[name$="-valor"]')?.value || 0);
+            const destino = fila.querySelector('[name$="-destino"]')?.value;
+            const beneficiario = fila.querySelector('[name$="-beneficiario"]')?.value;
+            if (!Number.isSafeInteger(valor) || valor <= 0 || !orden.length) return;
+            if (destino === "persona") {
+                if (!partes.has(beneficiario)) { incompleto = true; return; }
+                partes.set(beneficiario, partes.get(beneficiario) + valor);
+            } else {
+                const base = Math.floor(valor / orden.length);
+                const sobrante = valor % orden.length;
+                orden.forEach((persona, indice) => partes.set(persona.value, partes.get(persona.value) + base + (indice < sobrante ? 1 : 0)));
+            }
+        });
+        contenedor.replaceChildren();
+        personas.forEach(persona => {
+            const fila = document.createElement("p");
+            fila.textContent = persona.text + ": $ " + partes.get(persona.value).toLocaleString("es-CO");
+            contenedor.appendChild(fila);
+        });
+        if (incompleto) {
+            const aviso = document.createElement("p");
+            aviso.textContent = "Selecciona los beneficiarios pendientes.";
+            contenedor.appendChild(aviso);
+        }
+    }
+
     function calcularTotal() {
         const camposValor = formulario.querySelectorAll(
             'input[name$="-valor"]'
@@ -34,6 +73,7 @@ document.addEventListener("DOMContentLoaded", function () {
             verificacion.textContent = !esperado || !esperado.value ? "Indica el total del recibo para verificarlo." : coincide ? "El total coincide con el recibo." : "El total no coincide con el recibo.";
             verificacion.classList.toggle("field-error", Boolean(esperado && esperado.value && !coincide));
         }
+        mostrarReparto();
         totalElemento.textContent = "$ " + total.toLocaleString(
             "es-CO",
             {
@@ -79,6 +119,9 @@ document.addEventListener("DOMContentLoaded", function () {
     let paso = 1;
     function mostrarPaso(numero) {
         paso = numero;
+        const vista = document.getElementById("vista-reparto");
+        if (vista) vista.hidden = paso !== 2;
+        mostrarReparto();
         formulario.querySelectorAll(".purchase-item [data-campo]").forEach(function (campo) {
             const asignacion = ["destino", "beneficiario"].includes(campo.dataset.campo);
             campo.hidden = paso === 1 ? asignacion : !asignacion && campo.dataset.campo !== "descripcion";
