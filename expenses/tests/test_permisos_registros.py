@@ -279,3 +279,40 @@ class PruebasPermisosYRegistros(TestCase):
         with self.assertRaises(ValidationError):
             registrar_una_vez(self.pagador, self.grupo, clave, "compra", fallar)
         self.assertFalse(OperacionRegistro.objects.filter(clave=clave).exists())
+
+
+    def test_retiro_con_deuda_se_bloquea(self):
+        from expenses.services.permisos import retirar_integrante
+
+        asignacion = self.item.asignaciones.get()
+        asignacion.valor_asignado = 5000
+        asignacion.save(update_fields=["valor_asignado"])
+        Asignacion.objects.create(item=self.item, beneficiario=self.miembro, valor_asignado=5000)
+        with self.assertRaises(ValidationError):
+            retirar_integrante(self.admin, self.grupo.pk, self.miembro.pk)
+        self.assertTrue(Membresia.objects.get(grupo=self.grupo, usuario=self.miembro).activo)
+
+    def test_retiro_sin_deuda_conserva_membresia(self):
+        from expenses.services.permisos import retirar_integrante
+
+        membresia = retirar_integrante(self.admin, self.grupo.pk, self.miembro.pk)
+        self.assertFalse(membresia.activo)
+        self.assertTrue(Membresia.objects.filter(pk=membresia.pk).exists())
+
+    def test_archivado_conserva_compras_y_bloquea_edicion(self):
+        from expenses.services.permisos import archivar_grupo
+
+        grupo = archivar_grupo(self.admin, self.grupo.pk)
+        self.assertTrue(grupo.archivado)
+        self.assertTrue(Compra.objects.filter(pk=self.compra.pk, anulada=False).exists())
+        with self.assertRaises(PermissionDenied):
+            actualizar_compra(self.pagador, self.compra.pk, descripcion="Cambio posterior")
+
+    def test_solo_creador_puede_archivar_grupo(self):
+        from expenses.services.permisos import archivar_grupo
+
+        establecer_rol(self.admin, self.grupo.pk, self.miembro.pk, Membresia.Rol.ADMINISTRADOR)
+        with self.assertRaises(PermissionDenied):
+            archivar_grupo(self.miembro, self.grupo.pk)
+        self.grupo.refresh_from_db()
+        self.assertFalse(self.grupo.archivado)
