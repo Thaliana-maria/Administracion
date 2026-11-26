@@ -964,3 +964,19 @@ tbody tr:last-child td {
     .side-nav { overflow-x: auto; justify-content: flex-start; }
     .side-nav a { flex: 1 0 auto; }
 }
+
+.barra-saldo {
+    height: 7px;
+    background: #D8EBF1;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+.barra-saldo span {
+    display: block;
+    height: 100%;
+    background: var(--teal);
+}
+.barra-saldo .barra-negativa {
+    background: var(--danger);
+}
