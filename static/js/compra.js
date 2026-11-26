@@ -66,5 +66,37 @@ document.addEventListener("DOMContentLoaded", function () {
             boton.disabled = false;
         });
     });
+    const siguiente = document.getElementById("paso-siguiente");
+    const anterior = document.getElementById("paso-anterior");
+    const guardar = document.getElementById("guardar-compra");
+    const tituloPaso = document.getElementById("paso-compra");
+    let paso = 1;
+    function mostrarPaso(numero) {
+        paso = numero;
+        formulario.querySelectorAll(".purchase-item [data-campo]").forEach(function (campo) {
+            const asignacion = ["destino", "beneficiario"].includes(campo.dataset.campo);
+            campo.hidden = paso === 1 ? asignacion : !asignacion && campo.dataset.campo !== "descripcion";
+        });
+        siguiente.hidden = paso !== 1;
+        anterior.hidden = paso !== 2;
+        guardar.hidden = paso !== 2;
+        if (agregar) agregar.hidden = paso !== 1;
+        tituloPaso.textContent = paso === 1 ? "Paso 1 de 2: datos de la compra" : "Paso 2 de 2: asignar gastos";
+    }
+    if (siguiente && anterior && guardar && tituloPaso && !formulario.querySelector(".field-error, .form-error")) {
+        mostrarPaso(1);
+        siguiente.addEventListener("click", function () {
+            if (formulario.reportValidity()) mostrarPaso(2);
+        });
+        anterior.addEventListener("click", function () { mostrarPaso(1); });
+        formulario.addEventListener("submit", function (evento) {
+            if (paso === 1) {
+                evento.preventDefault();
+                guardar.disabled = false;
+                mostrarPaso(2);
+            }
+        });
+        if (agregar) agregar.addEventListener("click", function () { mostrarPaso(paso); });
+    }
     calcularTotal();
 });
