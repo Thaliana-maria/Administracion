@@ -72,7 +72,7 @@ def _validar_aplicaciones(
             obligacion=obligacion,
             anulada=False,
             pago__anulada=False,
-        )
+        ).exclude(pago__estado="rechazado")
         if excluir_pago_id is not None:
             pagos_aplicados = pagos_aplicados.exclude(pago_id=excluir_pago_id)
         monto_aplicado = pagos_aplicados.aggregate(total=Sum("monto"))["total"] or Decimal("0.00")
@@ -105,6 +105,7 @@ def registrar_pago(
     monto,
     fecha,
     aplicaciones,
+    estado="confirmado",
 ):
     Grupo.objects.select_for_update().get(pk=grupo_id)
     exigir_miembro(grupo_id, usuario)
@@ -128,6 +129,7 @@ def registrar_pago(
         monto=monto,
         fecha=fecha,
         registrado_por=usuario,
+        estado=estado,
     )
     _registrar_aplicaciones(pago, aplicaciones_validadas)
     registrar_cambio(
@@ -270,7 +272,8 @@ def registrar_pago_directo(usuario, *, grupo_id, deudor_id, acreedor_id, monto, 
         asignacion__item__anulada=False, asignacion__item__compra__anulada=False,
     ).order_by("pk")
     for obligacion in obligaciones:
-        abono = min(restante, obligacion.saldo_pendiente)
+        reservado = obligacion.aplicaciones.filter(anulada=False, pago__anulada=False, pago__estado="pendiente").aggregate(total=Sum("monto"))["total"] or Decimal("0.00")
+        abono = min(restante, obligacion.saldo_pendiente - reservado)
         if abono > 0:
             aplicaciones.append((obligacion.pk, abono))
             restante -= abono
@@ -279,4 +282,24 @@ def registrar_pago_directo(usuario, *, grupo_id, deudor_id, acreedor_id, monto, 
     if restante:
         raise ValidationError("El valor supera la deuda directa pendiente entre estas personas.")
     return registrar_pago(usuario, grupo_id=grupo_id, deudor_id=deudor_id,
-        acreedor_id=acreedor_id, monto=monto, fecha=fecha, aplicaciones=aplicaciones)
+        acreedor_id=acreedor_id, monto=monto, fecha=fecha, aplicaciones=aplicaciones, estado="pendiente")
+
+
+@transaction.atomic
+def responder_pago(usuario, grupo_id, pago_id, confirmar):
+    Grupo.objects.select_for_update().get(pk=grupo_id)
+    exigir_miembro(grupo_id, usuario)
+    pago = Pago.objects.select_for_update().filter(pk=pago_id, grupo_id=grupo_id).first()
+    if pago is None or pago.acreedor_id != usuario.pk:
+        raise PermissionDenied("Solo quien recibe el pago puede responderlo.")
+    if pago.anulada or pago.estado != "pendiente":
+        raise ValidationError("El pago ya fue resuelto.")
+    if confirmar:
+        aplicaciones = list(pago.aplicaciones.filter(anulada=False).values_list("obligacion_id", "monto"))
+        _validar_aplicaciones(grupo_id=grupo_id, deudor_id=pago.deudor_id,
+            acreedor_id=pago.acreedor_id, monto=pago.monto,
+            aplicaciones=aplicaciones, excluir_pago_id=pago.pk)
+    pago.estado = "confirmado" if confirmar else "rechazado"
+    pago.save(update_fields=["estado"])
+    registrar_cambio(usuario, pago, pago.estado, {"antes": "pendiente", "despues": pago.estado})
+    return pago
