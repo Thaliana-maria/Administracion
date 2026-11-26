@@ -105,3 +105,21 @@ def responder_compensacion(usuario, grupo_id, compensacion_id, aceptar):
     compensacion.save(update_fields=["estado"])
     registrar_cambio(usuario, compensacion, aprobacion.estado, {"estado": compensacion.estado})
     return compensacion
+
+
+@transaction.atomic
+def cancelar_compensacion(usuario, grupo_id, compensacion_id):
+    grupo = Grupo.objects.select_for_update().get(pk=grupo_id)
+    exigir_miembro(grupo_id, usuario)
+    if grupo.archivado:
+        raise ValidationError("El grupo está archivado.")
+    compensacion = Compensacion.objects.select_for_update().filter(pk=compensacion_id, grupo=grupo).first()
+    if compensacion is None or compensacion.estado not in ("pendiente", "aprobada"):
+        raise ValidationError("La solicitud no se puede cancelar.")
+    if not compensacion.aprobaciones.filter(usuario=usuario).exists() and compensacion.solicitante_id != usuario.pk:
+        raise PermissionDenied("Solo un participante o el solicitante puede cancelar.")
+    anterior = compensacion.estado
+    compensacion.estado = "cancelada"
+    compensacion.save(update_fields=["estado"])
+    registrar_cambio(usuario, compensacion, "cancelar", {"antes": anterior, "despues": "cancelada"})
+    return compensacion
