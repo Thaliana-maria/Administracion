@@ -138,9 +138,12 @@ def actualizar_item(usuario, item_id, *, valor, asignaciones, descripcion=None):
     if item.anulada or item.compra.anulada:
         raise ValidationError("No se puede editar un ítem anulado.")
 
-    valor_nuevo = Decimal(str(valor))
-    if valor_nuevo <= 0 or valor_nuevo != valor_nuevo.quantize(Decimal("0.01")):
-        raise ValidationError("El valor del ítem debe ser positivo y tener máximo dos decimales.")
+    try:
+        valor_nuevo = Decimal(str(valor))
+        if not valor_nuevo.is_finite() or valor_nuevo <= 0 or valor_nuevo > Decimal("9999999999") or valor_nuevo != valor_nuevo.to_integral_value():
+            raise ValidationError("El valor del ítem debe ser positivo y expresado en pesos enteros.")
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValidationError("El valor del ítem no es válido.")
     valores = {
         int(usuario_id): Decimal(str(monto))
         for usuario_id, monto in asignaciones.items()
@@ -167,8 +170,8 @@ def actualizar_item(usuario, item_id, *, valor, asignaciones, descripcion=None):
     if compra.total != total_items + compra.impuesto - compra.descuento:
         raise ValidationError("El total actual de la compra no coincide con sus componentes.")
     compra.total += valor_nuevo - item.valor
-    if compra.total <= 0:
-        raise ValidationError("El total de la compra debe ser positivo.")
+    if compra.total <= 0 or compra.total > Decimal("9999999999.99"):
+        raise ValidationError("El total de la compra está fuera del rango permitido.")
     compra.save(update_fields=["total"])
     item.valor = valor_nuevo
     if descripcion is not None:
