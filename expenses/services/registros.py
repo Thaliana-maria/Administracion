@@ -5,7 +5,7 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from auditlog.services import registrar_cambio
-from expenses.models import Asignacion, Compra, Grupo, Item, Membresia
+from expenses.models import Asignacion, Compra, Grupo, Item, Membresia, RevisionCompra
 from expenses.services.ajustes import recalcular_ajustes_compra
 from expenses.services.permisos import exigir_puede_editar_compra
 from ledger.models import Obligacion
@@ -25,6 +25,21 @@ def _exigir_sin_abonos(compra, asignaciones=None):
         raise ValidationError(
             "No se puede modificar este registro mientras tenga pagos aplicados."
         )
+
+
+def renovar_revisiones(compra, usuario):
+    afectados = set(Asignacion.objects.filter(
+        item__compra=compra, item__anulada=False, anulada=False
+    ).values_list("beneficiario_id", flat=True))
+    afectados.add(compra.pagador_id)
+    afectados.discard(usuario.pk)
+    anteriores = list(compra.revisiones.values("usuario_id", "estado"))
+    compra.revisiones.exclude(usuario_id__in=afectados).delete()
+    for usuario_id in afectados:
+        RevisionCompra.objects.update_or_create(
+            compra=compra, usuario_id=usuario_id, defaults={"estado": "pendiente"}
+        )
+    registrar_cambio(usuario, compra, "renovar_revisiones", {"antes": anteriores, "despues": "pendiente"})
 
 
 def _datos_compra(compra):
@@ -67,6 +82,7 @@ def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion
     datos_nuevos = _datos_compra(compra)
     if datos_anteriores != datos_nuevos:
         compra.save()
+        renovar_revisiones(compra, usuario)
         registrar_cambio(
             usuario,
             compra,
@@ -123,6 +139,7 @@ def actualizar_item(usuario, item_id, *, valor, asignaciones, descripcion=None):
     item.save(update_fields=["valor", "descripcion"])
     _reemplazar_asignaciones(item, usuario, valores, existentes)
     recalcular_ajustes_compra(compra.pk)
+    renovar_revisiones(compra, usuario)
     registrar_cambio(
         usuario,
         item,
@@ -235,6 +252,7 @@ def anular_item(usuario, item_id):
         asignacion.anulada_por = usuario
         asignacion.save(update_fields=["anulada", "anulada_en", "anulada_por"])
     recalcular_ajustes_compra(compra.pk)
+    renovar_revisiones(compra, usuario)
     registrar_cambio(
         usuario,
         item,
