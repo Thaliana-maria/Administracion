@@ -7,21 +7,19 @@
 {% block contenido_auth %}
 <section class="auth-screen">
     <div class="auth-brand">
-        <div class="brand-mark">QGE</div>
         <div class="brand-copy">
             <span class="auth-kicker">GASTOS COMPARTIDOS</span>
             <h1>¿Quién gastó esto?</h1>
             <p>
-                Organiza tus gastos compartidos, distribuye responsabilidades
-                y mantén las cuentas claras con tu grupo.
+                Registra las compras del hogar, asigna cada gasto
+                y mira quién le debe a quién.
             </p>
         </div>
     </div>
 
     <div class="auth-side">
         <div class="auth-form">
-            <h2>Bienvenido de nuevo</h2>
-            <p>Ingresa tus credenciales para continuar.</p>
+            <h2>Iniciar sesión</h2>
 
             <form method="post">
                 {% csrf_token %}
@@ -55,10 +53,9 @@
                 </button>
             </form>
 
-            <p>
-                ¿No tienes una cuenta?
-                <a href="{% url 'registro' %}">Crear cuenta</a>
-            </p>
+            <a class="button outline full" href="{% url 'registro' %}">
+                Crear cuenta
+            </a>
         </div>
     </div>
 </section>
