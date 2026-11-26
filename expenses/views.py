@@ -414,6 +414,8 @@ def editar_compra(request, compra_id):
         initial={
             "fecha": compra.fecha,
             "descripcion": compra.descripcion,
+            "impuesto": compra.impuesto,
+            "descuento": compra.descuento,
         },
     )
 
@@ -424,6 +426,8 @@ def editar_compra(request, compra_id):
                 compra.pk,
                 fecha=formulario.cleaned_data["fecha"],
                 descripcion=formulario.cleaned_data["descripcion"],
+                impuesto=formulario.cleaned_data["impuesto"] or 0,
+                descuento=formulario.cleaned_data["descuento"] or 0,
             )
         except ValidationError as error:
             formulario.add_error(None, error)
@@ -432,7 +436,7 @@ def editar_compra(request, compra_id):
                 request,
                 "La compra fue actualizada.",
             )
-            return redirect("inicio")
+            return redirect("compra_detalle", compra_id=compra.pk)
 
     return render(
         request,
