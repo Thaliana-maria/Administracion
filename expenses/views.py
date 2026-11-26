@@ -14,7 +14,9 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.models import Usuario
 from auditlog.models import Historial
-from expenses.models import Asignacion
+from expenses.models import Asignacion, RevisionCompra
+from auditlog.services import registrar_cambio
+from django.core.exceptions import PermissionDenied
 from ledger.models import Obligacion, AplicacionPago
 from expenses.forms import (
     CompraForm,
@@ -927,3 +929,24 @@ def registrar_una_vez(usuario, grupo, clave, tipo, servicio, *args, **datos):
     operacion.registro_id = registro.pk
     operacion.save(update_fields=["registro_id"])
     return registro
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def responder_compra(request, compra_id):
+    compra = get_object_or_404(Compra, pk=compra_id)
+    grupo = _grupo_del_usuario(request, compra.grupo_id)
+    grupo = Grupo.objects.select_for_update().get(pk=grupo.pk)
+    compra = Compra.objects.select_for_update().get(pk=compra_id)
+    exigir_miembro(grupo, request.user)
+    if grupo.archivado or compra.anulada:
+        raise PermissionDenied("La compra es de solo lectura.")
+    revision = get_object_or_404(RevisionCompra.objects.select_for_update(), compra=compra, usuario=request.user)
+    accion = request.POST.get("accion")
+    if revision.estado == "pendiente" and accion in ("aceptada", "objetada"):
+        revision.estado = accion
+        revision.save(update_fields=["estado"])
+        registrar_cambio(request.user, compra, "revision", {"antes": "pendiente", "despues": accion})
+        messages.success(request, "Tu revisión fue registrada.")
+    return redirect("compra_detalle", compra_id=compra.pk)
