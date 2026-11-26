@@ -68,9 +68,14 @@ class Obligacion(models.Model):
 
     @property
     def monto_aplicado(self):
-        return self.aplicaciones.filter(
+        pagos = self.aplicaciones.filter(
             anulada=False, pago__anulada=False, pago__estado="confirmado"
         ).aggregate(total=models.Sum("monto"))["total"] or Decimal("0.00")
+
+        compensaciones = self.tramos_compensacion.filter(
+            compensacion__estado="aplicada"
+        ).aggregate(total=models.Sum("monto"))["total"] or Decimal("0.00")
+        return pagos + compensaciones
 
     @property
     def saldo_pendiente(self):
