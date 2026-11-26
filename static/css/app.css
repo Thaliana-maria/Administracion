@@ -1208,3 +1208,21 @@ tbody tr:last-child td {
     .tabla-compensacion td { padding: 4px 0; border: 0; }
     .tarjeta-compensacion form .button { flex: 1 1 110px; white-space: normal; }
 }
+
+.estado-saldo { display: inline-block; padding: 3px 8px; border-radius: 12px; background: #E1E8EA; color: #435B63; font-size: 11px; white-space: nowrap; }
+.estado-saldo.favor { background: #D8EBF1; color: #10596C; }
+.estado-saldo.debe { background: #FBE5DB; color: #BF4824; }
+.tabla-saldos .positive { color: #10596C; }
+@media (max-width: 650px) {
+    .tabla-saldos, .tabla-transferencias, .tabla-compensacion, .tabla-detalle-compra { min-width: 0; }
+    .tabla-saldos thead, .tabla-transferencias thead { display: none; }
+    .tabla-saldos td, .tabla-transferencias td { padding: 10px 4px; font-size: 12px; overflow-wrap: anywhere; }
+    .tabla-saldos td:first-child { font-weight: 700; }
+    .tabla-saldos td:nth-child(2) { text-align: right; }
+    .tabla-saldos .barra-saldo { display: none; }
+    .tabla-transferencias .button { display: block; margin-top: 8px; white-space: normal; }
+    .tabla-transferencias td:nth-child(2)::before { content: "→ "; }
+    .main-content .page-heading p { color: #D8EBF1; }
+    .verificacion-compra .quick-links > .button { flex: 1 1 100%; }
+    .button:disabled { background: #D8E4E7; color: #435B63; opacity: 1; }
+}
