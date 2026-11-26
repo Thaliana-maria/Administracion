@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block titulo %}Pagos | {{ grupo.nombre }}{% endblock %}
 {% block contenido %}
-<div class="page-heading"><div><span class="breadcrumb">{{ grupo.nombre }}</span><h1>Pagos</h1></div></div>
-<div class="detail-grid">
-<section class="panel feature-panel"><h2>Registrar pago</h2>
-{% if grupo.archivado %}<p>Grupo archivado. Los pagos se conservan para consulta.</p>{% else %}<form method="post">{% csrf_token %}{{ formulario.as_p }}<button class="button primary" type="submit">Registrar pago</button></form>
+<div class="page-heading"><div><span class="breadcrumb">Abono entre integrantes</span><h1>Registrar pago</h1></div></div>
+<div class="detail-grid pantalla-pagos">
+<section class="panel feature-panel formulario-pago"><h2>Registrar pago</h2>
+{% if grupo.archivado %}<p>Grupo archivado. Los pagos se conservan para consulta.</p>{% else %}<form method="post">{% csrf_token %}{{ formulario.as_p }}<button class="button primary" type="submit">Guardar pago</button></form>
 <p>El pago se aplica a las obligaciones pendientes entre las personas seleccionadas.</p>{% endif %}
 </section>
-<section class="panel feature-panel"><h2>Historial de pagos</h2>
+<section class="panel feature-panel historial-pagos"><h2>Historial de pagos</h2>
 <div class="table-wrap"><table class="data-table tabla-compras"><thead><tr><th>Fecha</th><th>Pagó</th><th>Recibió</th><th>Valor</th><th>Estado</th></tr></thead><tbody>
 {% for pago in pagos %}<tr><td data-etiqueta="Fecha">{{ pago.fecha|date:"d/m/Y" }}</td><td data-etiqueta="Pagó">{{ pago.deudor.get_full_name|default:pago.deudor.email }}</td><td data-etiqueta="Recibió">{{ pago.acreedor.get_full_name|default:pago.acreedor.email }}</td><td data-etiqueta="Valor">$ {{ pago.monto|floatformat:2 }}</td><td data-etiqueta="Estado">{% if pago.anulada %}Anulado{% else %}{{ pago.get_estado_display }}{% endif %}{% if not grupo.archivado and not pago.anulada and pago.estado == 'pendiente' and pago.acreedor_id == user.id %}<form method="post" action="{% url 'responder_pago' grupo.id pago.id %}">{% csrf_token %}<button class="button primary" name="accion" value="confirmar">Confirmar</button><button class="button outline" name="accion" value="rechazar">Rechazar</button></form>{% endif %}{% if not grupo.archivado and not pago.anulada %}{% if pago.estado == "confirmado" and pago.acreedor_id == user.id %}<a class="button outline" data-confirmacion="¿Deseas anular este pago?" data-aviso="Pago de $ {{ pago.monto|floatformat:2 }}. Se conservará el historial y se liberarán las obligaciones correspondientes." href="{% url 'confirmar_anulacion_pago' pago.id %}">Anular pago</a>{% elif pago.estado == "pendiente" %}{% if pago.registrado_por_id == user.id or puede_gestionar %}<a class="button outline" href="{% url 'editar_pago' pago.id %}">Editar</a><a class="button outline" data-confirmacion="¿Deseas anular este pago?" data-aviso="Pago de $ {{ pago.monto|floatformat:2 }}. Se conservará el historial y se liberarán las obligaciones correspondientes." href="{% url 'confirmar_anulacion_pago' pago.id %}">Anular pago</a>{% endif %}{% endif %}{% endif %}</td></tr>
 {% empty %}<tr><td colspan="5">No hay pagos registrados.</td></tr>{% endfor %}
