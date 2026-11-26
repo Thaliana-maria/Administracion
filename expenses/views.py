@@ -411,7 +411,7 @@ def editar_compra(request, compra_id):
     )
 
     items_activos = list(compra.items.filter(anulada=False).prefetch_related("asignaciones").order_by("pk"))
-    editar_items = request.method == "POST" and request.POST.get("accion") == "editar_items"
+    editar_items = request.method == "POST"
     formularios_items = [
         (item, EditarItemForm(
             request.POST if editar_items else None,
@@ -421,21 +421,8 @@ def editar_compra(request, compra_id):
                      "beneficiarios": [fila.beneficiario_id for fila in item.asignaciones.all() if not fila.anulada]},
         )) for item in items_activos
     ]
-    if editar_items:
-        resultados = [formulario_item.is_valid() for _, formulario_item in formularios_items]
-        if resultados and all(resultados):
-            try:
-                actualizar_items_compra(request.user, compra.pk, {
-                    item.pk: formulario_item.cleaned_data for item, formulario_item in formularios_items
-                })
-            except ValidationError as error:
-                messages.error(request, " ".join(error.messages))
-            else:
-                messages.success(request, "Los ítems fueron actualizados.")
-                return redirect("compra_detalle", compra_id=compra.pk)
-
     formulario = EditarCompraForm(
-        request.POST if request.method == "POST" and not editar_items else None,
+        request.POST if editar_items else None,
         grupo=compra.grupo,
         initial={
             "fecha": compra.fecha,
@@ -446,25 +433,25 @@ def editar_compra(request, compra_id):
         },
     )
 
-    if request.method == "POST" and not editar_items and formulario.is_valid():
-        try:
-            actualizar_compra(
-                request.user,
-                compra.pk,
-                fecha=formulario.cleaned_data["fecha"],
-                descripcion=formulario.cleaned_data["descripcion"],
-                pagador_id=formulario.cleaned_data["pagador"].pk if formulario.cleaned_data["pagador"] else None,
-                impuesto=formulario.cleaned_data["impuesto"] or 0,
-                descuento=formulario.cleaned_data["descuento"] or 0,
-            )
-        except ValidationError as error:
-            formulario.add_error(None, error)
-        else:
-            messages.success(
-                request,
-                "La compra fue actualizada.",
-            )
-            return redirect("compra_detalle", compra_id=compra.pk)
+    if editar_items:
+        datos_validos = formulario.is_valid()
+        resultados = [formulario_item.is_valid() for _, formulario_item in formularios_items]
+        if datos_validos and resultados and all(resultados):
+            datos = formulario.cleaned_data
+            try:
+                actualizar_items_compra(
+                    request.user, compra.pk,
+                    {item.pk: formulario_item.cleaned_data for item, formulario_item in formularios_items},
+                    fecha=datos["fecha"], descripcion=datos["descripcion"],
+                    pagador_id=datos["pagador"].pk if datos["pagador"] else None,
+                    impuesto=datos["impuesto"] or Decimal("0"),
+                    descuento=datos["descuento"] or Decimal("0"),
+                )
+            except ValidationError as error:
+                formulario.add_error(None, error)
+            else:
+                messages.success(request, "La compra y sus ítems fueron actualizados.")
+                return redirect("compra_detalle", compra_id=compra.pk)
 
     return render(
         request,
