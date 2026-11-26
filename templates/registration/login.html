@@ -24,19 +24,14 @@
             <form method="post">
                 {% csrf_token %}
 
-                {% if form.non_field_errors %}
-                    <div class="form-error">
-                        {{ form.non_field_errors }}
-                    </div>
-                {% endif %}
-
                 {% for field in form %}
-                    <div class="purchase-field">
+                    <div class="purchase-field {% if field.name == 'password' and form.non_field_errors %}campo-acceso-error{% endif %}">
                         <label for="{{ field.id_for_label }}">
-                            {{ field.label }}
+                            {% if field.name == "username" %}Correo electrónico{% else %}{{ field.label }}{% endif %}
                         </label>
 
                         {{ field }}
+                        {% if field.name == "password" and form.non_field_errors %}<span class="field-error" role="alert">Correo o contraseña incorrectos.</span>{% endif %}
 
                         {% for error in field.errors %}
                             <span class="field-error">{{ error }}</span>
