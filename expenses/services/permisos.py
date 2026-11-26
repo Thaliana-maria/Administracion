@@ -2,7 +2,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 
 from auditlog.services import registrar_cambio
-from expenses.models import Grupo, Membresia
+from expenses.models import Grupo, Membresia, RevisionCompra
 
 
 def es_miembro(grupo, usuario):
@@ -226,6 +226,8 @@ def retirar_integrante(usuario, grupo_id, miembro_id):
         raise ValidationError("El integrante no está activo.")
     if calcular_saldos(grupo).get(miembro_id, 0) != 0:
         raise ValidationError("El integrante debe tener su saldo en cero.")
+    if RevisionCompra.objects.filter(compra__grupo=grupo, compra__anulada=False, usuario_id=miembro_id).exclude(estado="aceptada").exists():
+        raise ValidationError("El integrante tiene revisiones de compras sin resolver.")
     partes = Q(deudor_id=miembro_id) | Q(acreedor_id=miembro_id)
     if Pago.objects.filter(partes, grupo=grupo, anulada=False, estado="pendiente").exists():
         raise ValidationError("Hay pagos pendientes de confirmación.")
@@ -256,6 +258,8 @@ def archivar_grupo(usuario, grupo_id):
         raise PermissionDenied("Solo el creador puede archivar el grupo.")
     if grupo.archivado:
         return grupo
+    if RevisionCompra.objects.filter(compra__grupo=grupo, compra__anulada=False).exclude(estado="aceptada").exists():
+        raise ValidationError("Hay revisiones de compras sin resolver.")
     if any(calcular_saldos(grupo).values()):
         raise ValidationError("Todos los saldos deben estar en cero.")
     if Pago.objects.filter(grupo=grupo, anulada=False, estado="pendiente").exists():
