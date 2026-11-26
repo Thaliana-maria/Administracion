@@ -380,9 +380,13 @@ def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripc
         if not monto.is_finite() or monto < 0 or monto > Decimal("9999999999.99") or monto != monto.quantize(Decimal("0.01")):
             raise ValidationError("El IVA o descuento no es válido.")
     preparados = []
+    retirados = []
     subtotal = Decimal("0")
     for identificador, datos in cambios.items():
         item = items[identificador]
+        if datos.get("retirar"):
+            retirados.append(item)
+            continue
         valor = datos["valor"]
         if not valor.is_finite() or valor <= 0 or valor > Decimal("9999999999") or valor != valor.to_integral_value():
             raise ValidationError("Cada ítem debe tener un valor positivo en pesos enteros.")
@@ -394,6 +398,8 @@ def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripc
             raise ValidationError("Cada beneficiario debe recibir al menos un peso.")
         preparados.append((item, datos["descripcion"], valor, valores))
         subtotal += valor
+    if not preparados:
+        raise ValidationError("La compra debe conservar al menos un ítem.")
     total = subtotal + compra.impuesto - compra.descuento
     if total <= 0 or total > Decimal("9999999999.99"):
         raise ValidationError("El total resultante está fuera del rango permitido.")
@@ -413,6 +419,19 @@ def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripc
         item.save(update_fields=["descripcion", "valor"])
         _reemplazar_asignaciones(item, usuario, valores, existentes)
         registrar_cambio(usuario, item, "editar", {"antes": datos_anteriores, "despues": {"descripcion": descripcion, "valor": str(valor)}})
+    for item in retirados:
+        ahora = timezone.now()
+        item.anulada = True
+        item.anulada_en = ahora
+        item.anulada_por = usuario
+        item.save(update_fields=["anulada", "anulada_en", "anulada_por"])
+        for asignacion in item.asignaciones.filter(anulada=False):
+            asignacion.anulada = True
+            asignacion.anulada_en = ahora
+            asignacion.anulada_por = usuario
+            asignacion.save(update_fields=["anulada", "anulada_en", "anulada_por"])
+        registrar_cambio(usuario, item, "anular", {"antes": {"descripcion": item.descripcion, "valor": str(item.valor)}, "despues": "anulado"})
+        hubo_cambios = True
     if not hubo_cambios:
         return compra
     recalcular_ajustes_compra(compra.pk)
