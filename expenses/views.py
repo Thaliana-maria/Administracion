@@ -732,32 +732,6 @@ def dashboard_grupo(request, grupo_id):
         anulada=False,
     )
 
-    total_gastos = (
-        compras_activas.aggregate(
-            total=Sum("total")
-        )["total"]
-        or Decimal("0.00")
-    )
-
-    cantidad_items = Item.objects.filter(
-        compra__grupo=grupo,
-        compra__anulada=False,
-        anulada=False,
-    ).count()
-
-    pagos_activos = Pago.objects.filter(
-        grupo=grupo,
-        anulada=False,
-        estado="confirmado",
-    )
-
-    resumen_pagos = pagos_activos.aggregate(
-        cantidad=Count("pk"),
-        total=Sum("monto"),
-    )
-    cantidad_pagos = resumen_pagos["cantidad"]
-    total_pagos = resumen_pagos["total"] or Decimal("0.00")
-
     saldos = calcular_saldos(grupo)
 
     filas_saldos = [
@@ -768,7 +742,7 @@ def dashboard_grupo(request, grupo_id):
                 Decimal("0.00"),
             ),
         )
-        for usuario in _miembros(grupo)
+        for usuario in Usuario.objects.filter(pk__in=saldos.keys()).order_by('first_name', 'last_name', 'email')
     ]
 
     mayor_saldo = max((abs(saldo) for _, saldo in filas_saldos), default=Decimal("0"))
@@ -780,6 +754,16 @@ def dashboard_grupo(request, grupo_id):
         "-fecha",
         "-id",
     )[:5]
+
+    ultimos_pagos = Pago.objects.filter(grupo=grupo, anulada=False, estado="confirmado").select_related("deudor", "acreedor").order_by("-fecha", "-pk")[:5]
+    movimientos = [
+        {"fecha": compra.fecha, "id": compra.pk, "tipo": "Compra", "descripcion": compra.descripcion or "Compra", "persona": compra.pagador, "valor": compra.total, "compra_id": compra.pk}
+        for compra in ultimas_compras
+    ] + [
+        {"fecha": pago.fecha, "id": pago.pk, "tipo": "Pago", "descripcion": "Pago a " + (pago.acreedor.get_full_name() or pago.acreedor.email), "persona": pago.deudor, "valor": pago.monto}
+        for pago in ultimos_pagos
+    ]
+    movimientos.sort(key=lambda movimiento: (movimiento["fecha"], movimiento["id"], movimiento["tipo"]), reverse=True)
 
     transferencias_sugeridas = []
     pagos_disponibles = []
@@ -839,14 +823,10 @@ def dashboard_grupo(request, grupo_id):
         "expenses/grupo_dashboard.html",
         {
             "grupo": grupo,
-            "total_gastos": total_gastos,
-            "cantidad_items": cantidad_items,
-            "cantidad_pagos": cantidad_pagos,
-            "total_pagos": total_pagos,
             "cantidad_integrantes": len(filas_saldos),
             "filas_saldos": filas_saldos,
             "barras_saldos": barras_saldos,
-            "ultimas_compras": ultimas_compras,
+            "movimientos": movimientos[:5],
             "transferencias_sugeridas": transferencias_sugeridas,
             "pagos_disponibles": pagos_disponibles,
             "error_simplificacion": error_simplificacion,
