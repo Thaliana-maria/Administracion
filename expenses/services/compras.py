@@ -125,6 +125,9 @@ def _valor_entero_positivo(bruto, posicion):
             f"Ítem {posicion}: el valor debe ser mayor que cero."
         )
 
+    if valor > Decimal("9999999999"):
+        raise ValidationError(f"Ítem {posicion}: el valor supera el máximo permitido.")
+
     if valor != valor.to_integral_value():
         raise ValidationError(
             f"Ítem {posicion}: el valor debe estar en pesos enteros."
@@ -271,6 +274,9 @@ def registrar_compra(
         (item["valor"] for item in normalizados),
         Decimal("0"),
     )
+
+    if total > Decimal("9999999999"):
+        raise ValidationError("El total de la compra supera el máximo permitido.")
 
     compra = Compra.objects.create(
         grupo=grupo_bloqueado,
