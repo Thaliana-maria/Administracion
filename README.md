@@ -15,13 +15,13 @@ Facilitar el control de los gastos compartidos, mantener un historial de los mov
 | Funcionalidad | Descripción |
 | --- | --- |
 | Cuenta personal | Registro, inicio y cierre de sesión, edición del perfil y cambio de contraseña. |
-| Grupos | Creación de grupos y consulta de los grupos a los que pertenece el usuario. |
-| Integrantes | Incorporación de usuarios registrados y administración de roles. |
+| Grupos | Creación, edición del nombre y archivado seguro de grupos. |
+| Integrantes | Incorporación, administración de roles y retiro condicionado al estado financiero. |
 | Compras | Registro de quién pagó, fecha, descripción y artículos de una compra. |
 | Reparto | Distribución de artículos entre todos, una persona o gastos de mascota compartidos. |
 | Saldos | Consulta del dinero a favor y de las deudas pendientes. |
-| Pagos | El módulo de servicios permite registrar abonos a obligaciones; las vistas incluyen edición y anulación de pagos. |
-| Historial | Conservación de información sobre cambios y anulaciones. |
+| Pagos | Registro de pagos directos, confirmación o rechazo por el acreedor y anulación según permisos. |\n| Revisiones | Aceptación u objeción de compras por los integrantes afectados. |
+| Historial | Consulta de cambios y anulaciones por grupo. |
 | Dashboard | Resumen de gastos, artículos, pagos, integrantes y transferencias sugeridas. |
 
 ## Tecnologías utilizadas
@@ -342,9 +342,22 @@ El saldo tiene en cuenta las compras pagadas, los gastos y ajustes asignados, lo
 
 Se requiere iniciar sesión para consultar los grupos. Los permisos dependen de la pertenencia al grupo y del rol del usuario. Los formularios validan los datos, los modelos tienen restricciones para evitar valores incorrectos y las operaciones relacionadas utilizan transacciones para evitar registros incompletos. Las anulaciones conservan información para poder revisar los cambios.
 
+## Reglas de seguridad financiera
+
+- Los pagos pendientes reservan el monto, pero solo los confirmados modifican los saldos.
+- Las compras objetadas no admiten nuevos pagos asociados hasta resolver la objeción.
+- Las compras con abonos pendientes o confirmados no se pueden modificar ni anular libremente.
+- El retiro y archivado requieren resolver las obligaciones y revisiones pendientes.
+- Las claves únicas de operación evitan repetir el registro de una misma compra o pago.
+- Las transferencias indirectas son sugerencias; todavía no existe un mecanismo de compensación indirecta autorizado por todas las partes.
+
 ## Rendimiento
 
 El proyecto utiliza consultas agrupadas para calcular los saldos, relaciones cargadas junto con los registros principales e índices en campos de búsqueda frecuente. En el dashboard se obtiene la cantidad y el total de pagos mediante una sola consulta. También se limita la lista de compras recientes para evitar cargar todo el historial.
+
+## Estado de validación
+
+Las pruebas nuevas de seguridad, edición, pagos y rendimiento están incorporadas, pero todavía no se ha ejecutado la suite completa de esta versión. El cumplimiento del RNF-04 (menos de dos segundos con 20 integrantes y 1000 compras) requiere medición. La equivalencia visual con Figma también requiere revisión en navegador.
 
 ## Organización del trabajo
 
