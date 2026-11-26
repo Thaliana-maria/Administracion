@@ -151,6 +151,9 @@ def validar_items(grupo, items):
             "La compra debe tener por lo menos un ítem."
         )
 
+    if len(items) > 100:
+        raise ValidationError("La compra admite máximo 100 ítems.")
+
     membresias = Membresia.objects.filter(
         grupo=grupo,
         activo=True,
