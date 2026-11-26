@@ -56,12 +56,32 @@
         {% empty %}
         <p>No hay ítems activos.</p>
         {% endfor %}
-        {% if formularios_items %}
+        <h2>Agregar ítems</h2>
+        {{ nuevos_items.management_form }}
+        {{ nuevos_items.non_form_errors }}
+        <div id="nuevos-items">
+            {% for fila in nuevos_items %}
+            <fieldset class="panel">{{ fila.as_p }}</fieldset>
+            {% endfor %}
+        </div>
+        <template id="nuevo-item"><fieldset class="panel">{{ nuevos_items.empty_form.as_p }}</fieldset></template>
+        <button type="button" class="button outline" id="agregar-item-edicion">+ Agregar ítem</button>
         <div class="quick-links">
             <button type="submit" class="button primary">Guardar todos los cambios</button>
             <a class="button outline" href="{% url 'compra_detalle' compra.pk %}">Cancelar</a>
         </div>
-        {% endif %}
 </section>
 </form>
+<script>
+    const agregar = document.getElementById('agregar-item-edicion');
+    const cantidad = document.getElementById('id_nuevos-TOTAL_FORMS');
+    const maximo = document.getElementById('id_nuevos-MAX_NUM_FORMS');
+    agregar.addEventListener('click', () => {
+        const indice = Number(cantidad.value);
+        if (indice >= Number(maximo.value)) return;
+        const plantilla = document.getElementById('nuevo-item');
+        document.getElementById('nuevos-items').insertAdjacentHTML('beforeend', plantilla.innerHTML.replace(/__prefix__/g, indice));
+        cantidad.value = indice + 1;
+    });
+</script>
 {% endblock %}
