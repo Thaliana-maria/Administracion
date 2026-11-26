@@ -206,6 +206,10 @@
                                         Guardar rol
                                     </button>
                                 </form>
+                                <form method="post" action="{% url 'retirar_integrante' grupo.id membresia.usuario_id %}">
+                                    {% csrf_token %}
+                                    <button class="button outline" type="submit">Retirar</button>
+                                </form>
                             {% endif %}
                         </td>
                     </tr>
@@ -226,4 +230,7 @@
         </p>
     {% endif %}
 </section>
+{% if user.id != grupo.creador_id %}
+<section class="panel feature-panel"><h2>Salir del grupo</h2><p>Debes resolver tus obligaciones y pagos pendientes antes de salir.</p><form method="post" action="{% url 'retirar_integrante' grupo.id user.id %}">{% csrf_token %}<button class="button outline" type="submit">Salir del grupo</button></form></section>
+{% endif %}
 {% endblock %}
