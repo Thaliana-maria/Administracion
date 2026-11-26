@@ -20,9 +20,11 @@ Facilitar el control de los gastos compartidos, mantener un historial de los mov
 | Compras | Registro de quién pagó, fecha, descripción y artículos de una compra. |
 | Reparto | Distribución de artículos entre todos, una persona o gastos de mascota compartidos. |
 | Saldos | Consulta del dinero a favor y de las deudas pendientes. |
-| Pagos | Registro de pagos directos, confirmación o rechazo por el acreedor y anulación según permisos. |\n| Revisiones | Aceptación u objeción de compras por los integrantes afectados. |
+| Pagos | Registro de pagos directos, confirmación o rechazo por el acreedor y anulación según permisos. |
+| Revisiones | Aceptación u objeción de compras por los integrantes afectados. |
+| Compensaciones | Solicitud, aprobación de participantes y confirmación de recepción de pagos indirectos. |
 | Historial | Consulta de cambios y anulaciones por grupo. |
-| Dashboard | Resumen de gastos, artículos, pagos, integrantes y transferencias sugeridas. |
+| Dashboard | Resumen de saldos, transferencias sugeridas y movimientos recientes. |
 
 ## Tecnologías utilizadas
 
@@ -167,7 +169,8 @@ Se encarga de las cuentas entre integrantes.
 | --- | --- |
 | saldos.py | Calcula cuánto debe o tiene a favor cada usuario. |
 | obligaciones.py | Registra, actualiza y anula pagos y sus abonos. |
-| simplificacion.py | Propone transferencias para reducir la cantidad de movimientos necesarios. |
+| simplificacion.py | Propone transferencias y busca cadenas de obligaciones mediante BFS. |
+| compensaciones.py | Solicita, aprueba, cancela y aplica compensaciones indirectas. |
 
 Las transferencias sugeridas no crean pagos automáticamente ni modifican los saldos.
 
@@ -197,6 +200,9 @@ Las entidades principales son:
 | RevisionCompra | Estado de revisión de una compra por cada usuario afectado. |
 | OperacionRegistro | Clave única para evitar registros duplicados de compras y pagos. |
 | AplicacionPago | Parte de un pago aplicada a una obligación. |
+| Compensacion | Grupo, solicitante, deudor, acreedor, monto, estado, clave y fechas. |
+| AprobacionCompensacion | Respuesta individual y fecha de cada participante. |
+| TramoCompensacion | Obligación original, orden y monto reservado o aplicado. |
 | Historial | Usuario, acción, registro afectado, detalles y fecha. |
 
 ### Diagrama entidad-relación
@@ -226,6 +232,14 @@ erDiagram
     USUARIO o|--o{ PAGO : registra
     PAGO ||--o{ APLICACION_PAGO : distribuye
     OBLIGACION ||--o{ APLICACION_PAGO : recibe
+    GRUPO ||--o{ COMPENSACION : contiene
+    USUARIO ||--o{ COMPENSACION : solicita
+    USUARIO ||--o{ COMPENSACION : envia
+    USUARIO ||--o{ COMPENSACION : recibe
+    COMPENSACION ||--o{ APROBACION_COMPENSACION : requiere
+    USUARIO ||--o{ APROBACION_COMPENSACION : responde
+    COMPENSACION ||--o{ TRAMO_COMPENSACION : contiene
+    OBLIGACION ||--o{ TRAMO_COMPENSACION : vincula
     USUARIO ||--o{ HISTORIAL : realiza
     COMPRA ||--o{ REVISION_COMPRA : recibe
     USUARIO ||--o{ REVISION_COMPRA : revisa
@@ -323,6 +337,32 @@ erDiagram
         decimal monto
         boolean anulada
     }
+    COMPENSACION {
+        int id PK
+        int grupo_id FK
+        int solicitante_id FK
+        int deudor_id FK
+        int acreedor_id FK
+        decimal monto
+        string estado
+        uuid clave UK
+        datetime fecha
+        datetime fecha_aplicacion
+    }
+    APROBACION_COMPENSACION {
+        int id PK
+        int compensacion_id FK
+        int usuario_id FK
+        string estado
+        datetime fecha_respuesta
+    }
+    TRAMO_COMPENSACION {
+        int id PK
+        int compensacion_id FK
+        int obligacion_id FK
+        int orden
+        decimal monto
+    }
     HISTORIAL {
         int id PK
         int usuario_id FK
@@ -371,11 +411,29 @@ Se requiere iniciar sesión para consultar los grupos. Los permisos dependen de 
 - Las compras con abonos pendientes o confirmados no se pueden modificar ni anular libremente.
 - El retiro y archivado requieren resolver las obligaciones y revisiones pendientes.
 - Las claves únicas de operación evitan repetir el registro de una misma compra o pago.
-- Las transferencias indirectas son sugerencias; todavía no existe un mecanismo de compensación indirecta autorizado por todas las partes.
+- Las compensaciones pendientes o aprobadas reservan obligaciones; solo las aplicadas modifican saldos.
+- Todos los participantes deben aprobar y el acreedor debe confirmar la recepción del dinero.
+- Las compras vinculadas y los retiros o archivados con solicitudes activas tienen restricciones adicionales.
+
+## Funcionamiento de una compensación
+
+```mermaid
+flowchart TD
+    A[Transferencia sugerida] --> B[Buscar cadena disponible]
+    B --> C[Solicitar y reservar obligaciones]
+    C --> D{Todos aceptan}
+    D -- Rechazo o cancelacion --> E[Liberar reservas]
+    D -- Si --> F[Esperar confirmacion del acreedor]
+    F --> G[Validar cadena y montos]
+    G --> H[Aplicar y actualizar saldos]
+    H --> I[Registrar historial]
+```
+
+La búsqueda BFS utiliza una sola cadena capaz de cubrir el monto completo. No combina varias cadenas. La compensación aplicada reduce cada obligación de la cadena y ajusta el saldo neto de los extremos una sola vez, sin crear un pago directo adicional. La confirmación es manual, no bancaria. No existe todavía una operación de reversión de compensaciones aplicadas.
 
 ## Rendimiento
 
-El proyecto utiliza consultas agrupadas para calcular los saldos, relaciones cargadas junto con los registros principales e índices en campos de búsqueda frecuente. En el dashboard se obtiene la cantidad y el total de pagos mediante una sola consulta. También se limita la lista de compras recientes para evitar cargar todo el historial.
+El proyecto utiliza consultas agrupadas para calcular los saldos, relaciones cargadas junto con los registros principales e índices en campos de búsqueda frecuente. El dashboard limita las compras, pagos y compensaciones recientes y combina sus resultados. El rendimiento de las consultas adicionales de compensación aún debe medirse.
 
 ## Actualización de una instalación existente
 
@@ -390,7 +448,7 @@ python manage.py migrate
 python manage.py test
 ```
 
-Las migraciones nuevas agregan el estado de archivado, las claves únicas de operación, las revisiones de compras y el estado de los pagos. Los grupos existentes conservan el estado activo y los pagos anteriores quedan confirmados por defecto para conservar el cálculo histórico. No se generan revisiones retroactivas de compras existentes.
+Las migraciones nuevas agregan el estado de archivado, las claves únicas de operación, las revisiones de compras el estado de los pagos y las tablas de compensaciones con su fecha de aplicación. Los grupos existentes conservan el estado activo y los pagos anteriores quedan confirmados por defecto para conservar el cálculo histórico. No se generan revisiones retroactivas de compras existentes.
 
 En producción, con la configuración de caché de base de datos, ejecuta también python manage.py createcachetable. Comprueba primero los resultados en una copia de la base de datos.
 
