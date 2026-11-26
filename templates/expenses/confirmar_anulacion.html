@@ -12,7 +12,7 @@
     </div>
 </div>
 
-<section class="panel feature-panel">
+<section class="panel feature-panel confirmacion">
     <div class="danger-panel">
         <h2>¿Deseas anular esta compra?</h2>
 
@@ -47,7 +47,7 @@
             Confirmar anulación
         </button>
 
-        <a class="button outline" href="{% url 'inicio' %}">
+        <a class="button outline" href="{% url 'compra_detalle' compra.id %}">
             Cancelar
         </a>
     </form>
