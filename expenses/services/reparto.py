@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 
 def repartir(valor, beneficiarios, pagador=None):
@@ -8,8 +8,11 @@ def repartir(valor, beneficiarios, pagador=None):
     primero al pagador (si está en la lista) y luego por orden alfabetico.
     El resultado es un diccionario con el id de cada persona y su parte.
     """
-    valor = Decimal(str(valor))
-    if valor <= 0:
+    try:
+        valor = Decimal(str(valor))
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValueError("El valor debe ser numérico")
+    if not valor.is_finite() or valor <= 0:
         raise ValueError("El valor debe ser mayor que cero")
     if valor != valor.to_integral_value():
         raise ValueError("Para RN-05 el valor debe estar expresado en pesos enteros")
@@ -33,7 +36,7 @@ def repartir(valor, beneficiarios, pagador=None):
     sobrante = int(valor) - (parte * len(personas))
     resultado = {identificador: Decimal(parte) for identificador, nombre in personas}
 
-    orden = sorted(personas, key=lambda persona: persona[1].lower())
+    orden = sorted(personas, key=lambda persona: (persona[1].lower(), persona[0]))
     if pagador is not None:
         orden = sorted(orden, key=lambda persona: persona[0] != pagador)
 
