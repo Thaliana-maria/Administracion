@@ -139,7 +139,7 @@ class EditarItemForm(forms.Form):
 
     def __init__(self, *args, grupo, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["beneficiarios"].queryset = integrantes_activos(grupo)
+        self.fields["beneficiarios"].queryset = (integrantes_activos(grupo) | UsuarioActual.objects.filter(pk=grupo.creador_id)).distinct()
 
 
 class EditarPagoForm(forms.Form):
