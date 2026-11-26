@@ -250,3 +250,29 @@ class PruebasObligacionesYPagos(TestCase):
         with self.assertNumQueries(6):
             saldos = calcular_saldos(self.grupo)
         self.assertEqual(sum(saldos.values()), 0)
+
+
+    def test_transferencias_disponibles_respetan_reservas_y_rechazos(self):
+        from ledger.services.simplificacion import transferencias_disponibles
+
+        pago = self.registrar_abono("3000.00", estado="pendiente")
+        esperado = [{"deudor_id": self.deudor.pk, "acreedor_id": self.acreedor.pk,
+                     "monto": Decimal("7000")}]
+        self.assertEqual(transferencias_disponibles(self.grupo), esperado)
+        responder_pago(self.acreedor, self.grupo.pk, pago.pk, False)
+        esperado[0]["monto"] = Decimal("10000")
+        self.assertEqual(transferencias_disponibles(self.grupo), esperado)
+
+    def test_transferencias_disponibles_excluyen_compras_objetadas(self):
+        from expenses.models import RevisionCompra
+        from ledger.services.simplificacion import transferencias_disponibles
+
+        RevisionCompra.objects.create(compra=self.compra, usuario=self.deudor, estado="objetada")
+        self.assertEqual(transferencias_disponibles(self.grupo), [])
+
+    def test_transferencias_disponibles_usan_una_consulta(self):
+        from ledger.services.simplificacion import transferencias_disponibles
+
+        with self.assertNumQueries(1):
+            transferencias = transferencias_disponibles(self.grupo)
+        self.assertEqual(transferencias[0]["monto"], Decimal("10000"))
