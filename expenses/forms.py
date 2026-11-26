@@ -41,6 +41,10 @@ class IntegranteForm(forms.Form):
 
 
 class CompraForm(forms.Form):
+    total_esperado = forms.DecimalField(label="Total de la compra (COP)", max_digits=12, decimal_places=2, min_value=0.01, required=False)
+    impuesto = forms.DecimalField(label="IVA (COP)", max_digits=12, decimal_places=2, min_value=0, required=False, initial=0)
+    descuento = forms.DecimalField(label="Descuento (COP)", max_digits=12, decimal_places=2, min_value=0, required=False, initial=0)
+
     pagador = forms.ModelChoiceField(
         queryset=Usuario.objects.none(),
         label="Quién pagó"
