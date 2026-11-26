@@ -9,6 +9,7 @@ from expenses.models import Grupo, Asignacion
 
 
 class Pago(RegistroAnulable):
+    estado = models.CharField(max_length=12, choices=[("pendiente", "Pendiente"), ("confirmado", "Confirmado"), ("rechazado", "Rechazado")], default="confirmado")
     grupo = models.ForeignKey(Grupo, on_delete=models.PROTECT, related_name="pagos")
     deudor = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="pagos_enviados"
@@ -68,7 +69,7 @@ class Obligacion(models.Model):
     @property
     def monto_aplicado(self):
         return self.aplicaciones.filter(
-            anulada=False, pago__anulada=False
+            anulada=False, pago__anulada=False, pago__estado="confirmado"
         ).aggregate(total=models.Sum("monto"))["total"] or Decimal("0.00")
 
     @property
