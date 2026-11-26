@@ -67,7 +67,7 @@ class ItemForm(forms.Form):
     valor = forms.DecimalField(
         label="Valor",
         min_value=1,
-        max_digits=12,
+        max_digits=10,
         decimal_places=0
     )
     destino = forms.ChoiceField(
@@ -113,7 +113,7 @@ class EditarItemForm(forms.Form):
     valor = forms.DecimalField(
         max_digits=12,
         decimal_places=2,
-        min_value=0,
+        min_value=0.01,
         label="Valor"
     )
     beneficiarios = forms.ModelMultipleChoiceField(
@@ -131,7 +131,7 @@ class EditarPagoForm(forms.Form):
     monto = forms.DecimalField(
         max_digits=12,
         decimal_places=2,
-        min_value=0,
+        min_value=0.01,
         label="Monto"
     )
     fecha = forms.DateField(
