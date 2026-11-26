@@ -15,7 +15,7 @@
         <h1>Detalle de la compra</h1>
         <p>Consulta los productos y la distribución de los gastos.</p>
     </div>
-    <div class="quick-links">{% if puede_editar %}<a class="button outline" href="{% url 'editar_compra' compra.id %}">Editar compra</a><a class="button danger" href="{% url 'confirmar_anulacion_compra' compra.id %}">Anular compra</a>{% endif %}<a class="button outline" href="{% url 'compras_lista' compra.grupo.id %}">Volver a compras</a></div>
+    <div class="quick-links">{% if puede_editar %}<a class="button outline" href="{% url 'editar_compra' compra.id %}">Editar compra</a><a class="button danger" data-confirmacion="¿Deseas anular esta compra?" data-aviso="Se conservará el historial. Si existen abonos pendientes o confirmados, la anulación no se permitirá." href="{% url 'confirmar_anulacion_compra' compra.id %}">Anular compra</a>{% endif %}<a class="button outline" href="{% url 'compras_lista' compra.grupo.id %}">Volver a compras</a></div>
 </div>
 
 <section class="panel feature-panel">
