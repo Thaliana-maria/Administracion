@@ -373,10 +373,13 @@ def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripc
         compra.fecha = fecha
     if descripcion is not None:
         compra.descripcion = descripcion
-    if impuesto is not None:
-        compra.impuesto = impuesto
-    if descuento is not None:
-        compra.descuento = descuento
+    try:
+        if impuesto is not None:
+            compra.impuesto = Decimal(str(impuesto))
+        if descuento is not None:
+            compra.descuento = Decimal(str(descuento))
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValidationError("El IVA o descuento no es válido.")
     for monto in (compra.impuesto, compra.descuento):
         if not monto.is_finite() or monto < 0 or monto > Decimal("9999999999.99") or monto != monto.quantize(Decimal("0.01")):
             raise ValidationError("El IVA o descuento no es válido.")
@@ -388,7 +391,10 @@ def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripc
         if item is not None and datos.get("retirar"):
             retirados.append(item)
             continue
-        valor = datos["valor"]
+        try:
+            valor = Decimal(str(datos["valor"]))
+        except (InvalidOperation, ValueError, TypeError, KeyError):
+            raise ValidationError("El valor del ítem no es válido.")
         if not valor.is_finite() or valor <= 0 or valor > Decimal("9999999999") or valor != valor.to_integral_value():
             raise ValidationError("Cada ítem debe tener un valor positivo en pesos enteros.")
         try:
@@ -397,7 +403,10 @@ def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripc
             raise ValidationError(str(error))
         if any(parte <= 0 for parte in valores.values()):
             raise ValidationError("Cada beneficiario debe recibir al menos un peso.")
-        preparados.append((item, datos["descripcion"], valor, valores))
+        nombre_item = datos.get("descripcion", "")
+        if not isinstance(nombre_item, str) or not nombre_item.strip():
+            raise ValidationError("Cada ítem debe tener una descripción.")
+        preparados.append((item, nombre_item.strip(), valor, valores))
         subtotal += valor
     if not preparados:
         raise ValidationError("La compra debe conservar al menos un ítem.")
