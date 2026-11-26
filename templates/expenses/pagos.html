@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}Pagos | {{ grupo.nombre }}{% endblock %}
 {% block contenido %}
-<div class="page-heading"><div><span class="breadcrumb">Abono entre integrantes</span><h1>Registrar pago</h1></div></div>
+<div class="page-heading"><div><span class="breadcrumb">Abono entre integrantes</span><h1>Registrar pago</h1></div><a class="button outline" href="{% url 'compensaciones_grupo' grupo.id %}">Compensaciones</a></div>
 <div class="detail-grid pantalla-pagos">
 <section class="panel feature-panel formulario-pago"><h2>Registrar pago</h2>
 {% if grupo.archivado %}<p>Grupo archivado. Los pagos se conservan para consulta.</p>{% else %}<form method="post">{% csrf_token %}{% for campo in formulario.hidden_fields %}{{ campo }}{{ campo.errors }}{% endfor %}
