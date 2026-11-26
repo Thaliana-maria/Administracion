@@ -250,6 +250,7 @@ def anular_compra(usuario, compra_id):
     if compra.anulada:
         raise ValidationError("La compra ya está anulada.")
 
+    _exigir_sin_abonos(compra)
     ahora = timezone.now()
     detalles_compra = _datos_compra(compra)
     compra.anulada = True
