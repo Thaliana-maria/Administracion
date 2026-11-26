@@ -11,8 +11,12 @@ def simplificar_deudas(grupo, *, saldos=None):
     """Calcula transferencias sugeridas; para grupos grandes utiliza una aproximación."""
     if saldos is None:
         saldos = calcular_saldos(grupo)
+    for saldo in saldos.values():
+        valor = Decimal(str(saldo))
+        if not valor.is_finite() or valor != valor.quantize(Decimal("0.01")):
+            raise ValueError("Los saldos deben ser finitos y tener máximo dos decimales.")
     centavos = tuple(
-        (usuario_id, int(saldo * 100))
+        (usuario_id, int(Decimal(str(saldo)) * 100))
         for usuario_id, saldo in sorted(saldos.items())
         if saldo
     )
