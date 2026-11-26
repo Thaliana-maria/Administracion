@@ -1047,3 +1047,33 @@ tbody tr:last-child td {
     justify-content: flex-end;
     gap: 10px;
 }
+
+
+.lista-compras-movil, .accesos-grupo-movil { display: none; }
+
+@media (max-width: 650px) {
+    .nav-grupo .nav-secundaria { display: none; }
+    .nav-grupo { justify-content: space-around; overflow: visible; }
+    .nav-grupo a { flex: 1 1 0; font-size: 11px; padding: 12px 2px; }
+    .nav-grupo a.active { background: transparent; font-weight: 700; }
+    .main-content .page-heading {
+        background: #10596C;
+        color: white;
+        padding: 18px 16px;
+        border-radius: 0;
+    }
+    .main-content .page-heading h1 { color: white; font-size: 21px; margin: 4px 0; }
+    .main-content .page-heading .breadcrumb { color: #D8EBF1; }
+    .cabecera-compras > .button { display: none; }
+    .lista-compras-escritorio { background: transparent; border: 0; box-shadow: none; padding: 0; }
+    .lista-compras-escritorio > .table-wrap { display: none; }
+    .lista-compras-movil { display: grid; gap: 10px; }
+    .tarjeta-compra { display: flex; justify-content: space-between; gap: 12px; background: white; border: 1px solid var(--line); border-radius: 9px; padding: 13px; color: var(--ink); text-decoration: none; }
+    .tarjeta-compra > div { display: flex; flex-direction: column; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
+    .tarjeta-compra > div:last-child { align-items: flex-end; text-align: right; }
+    .tarjeta-compra small { color: var(--muted); font-size: 11px; }
+    .estado-compra { background: #D8EBF1; color: #10596C; border-radius: 12px; padding: 3px 8px; font-size: 10px; font-weight: 700; }
+    .estado-anulada { background: #E1E8EA; color: #435B63; }
+    .lista-compras-movil > .button { width: 100%; }
+    .accesos-grupo-movil { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+}
