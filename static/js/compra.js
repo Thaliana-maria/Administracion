@@ -6,6 +6,15 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
     }
 
+    function compararNombres(a, b) {
+        const primero = Array.from(a.text.toLowerCase(), letra => letra.codePointAt(0));
+        const segundo = Array.from(b.text.toLowerCase(), letra => letra.codePointAt(0));
+        for (let i = 0; i < Math.min(primero.length, segundo.length); i++) {
+            if (primero[i] !== segundo[i]) return primero[i] - segundo[i];
+        }
+        return primero.length - segundo.length;
+    }
+
     function mostrarReparto() {
         const contenedor = document.getElementById("partes-compra");
         const pagador = formulario.elements["pagador"];
@@ -15,7 +24,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const orden = personas.slice().sort((a, b) => {
             if (a.value === pagador.value) return -1;
             if (b.value === pagador.value) return 1;
-            return a.text.toLowerCase().localeCompare(b.text.toLowerCase());
+            return compararNombres(a, b);
         });
         let incompleto = false;
         formulario.querySelectorAll(".purchase-item").forEach(fila => {
@@ -36,7 +45,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const ajuste = Math.round(Number(formulario.elements["impuesto"]?.value || 0) * 100) -
             Math.round(Number(formulario.elements["descuento"]?.value || 0) * 100);
         const cuotas = new Map();
-        if (subtotal > 0 && !incompleto) {
+        if (subtotal > 0 && Number.isSafeInteger(subtotal) && Number.isSafeInteger(ajuste) && !incompleto) {
             const magnitud = BigInt(Math.abs(ajuste));
             const base = BigInt(subtotal);
             const residuos = personas.filter(persona => partes.get(persona.value) > 0).map(persona => {
@@ -45,7 +54,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return {persona, residuo: producto % base};
             });
             residuos.sort((a, b) => a.residuo === b.residuo
-                ? a.persona.text.toLowerCase().localeCompare(b.persona.text.toLowerCase()) || Number(a.persona.value) - Number(b.persona.value)
+                ? compararNombres(a.persona, b.persona) || Number(a.persona.value) - Number(b.persona.value)
                 : a.residuo > b.residuo ? -1 : 1);
             const sobrante = Math.abs(ajuste) - Array.from(cuotas.values()).reduce((suma, valor) => suma + valor, 0);
             residuos.slice(0, sobrante).forEach(({persona}) => cuotas.set(persona.value, cuotas.get(persona.value) + 1));
@@ -54,7 +63,7 @@ document.addEventListener("DOMContentLoaded", function () {
         personas.forEach(persona => {
             const fila = document.createElement("p");
             const base = partes.get(persona.value);
-            const ajustePersona = Math.sign(ajuste) * (cuotas.get(persona.value) || 0) / 100;
+            const ajustePersona = Number.isSafeInteger(ajuste) ? Math.sign(ajuste) * (cuotas.get(persona.value) || 0) / 100 : 0;
             fila.textContent = persona.text + ": $ " + (base + ajustePersona).toLocaleString("es-CO", {maximumFractionDigits: 2}) +
                 (ajustePersona ? " (ajuste: " + ajustePersona.toLocaleString("es-CO", {maximumFractionDigits: 2}) + ")" : "");
             contenedor.appendChild(fila);
