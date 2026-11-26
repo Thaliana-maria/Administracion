@@ -15,13 +15,13 @@
     </a>
 </div>
 
+<form method="post" class="feature-form">
+    {% csrf_token %}
 <section class="panel feature-panel edit-panel">
     <h2>Información de la compra</h2>
     <p>Subtotal de ítems: $ {{ subtotal|floatformat:2 }}</p>
     <p>Las compras con pagos pendientes o confirmados no se pueden modificar.</p>
 
-    <form method="post" class="feature-form">
-        {% csrf_token %}
 
         {% if formulario.non_field_errors %}
             <div class="form-error">
@@ -43,22 +43,12 @@
             </div>
         {% endfor %}
 
-        <div class="quick-links">
-            <button type="submit" class="button primary">
-                Guardar cambios
-            </button>
-            <a class="button outline" href="{% url 'compra_detalle' compra.pk %}">
-                Cancelar
-            </a>
-        </div>
-    </form>
 </section>
 <section class="panel feature-panel">
     <h2>Editar ítems de la compra</h2>
     <p>Guarda todos los cambios de los ítems en una sola operación.</p>
     <form method="post" class="feature-form">
         {% csrf_token %}
-        <input type="hidden" name="accion" value="editar_items">
         {% for item, formulario_item in formularios_items %}
         <fieldset class="panel">
             <legend>Ítem {{ forloop.counter }}</legend>
@@ -69,10 +59,10 @@
         {% endfor %}
         {% if formularios_items %}
         <div class="quick-links">
-            <button type="submit" class="button primary">Guardar todos los ítems</button>
+            <button type="submit" class="button primary">Guardar todos los cambios</button>
             <a class="button outline" href="{% url 'compra_detalle' compra.pk %}">Cancelar</a>
         </div>
         {% endif %}
-    </form>
 </section>
+</form>
 {% endblock %}
