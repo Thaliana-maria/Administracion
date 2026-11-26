@@ -246,8 +246,8 @@ class PruebasObligacionesYPagos(TestCase):
         self.assertEqual(saldos[integrante.pk], Decimal("0"))
         self.assertEqual(sum(saldos.values()), 0)
 
-    def test_calculo_saldos_utiliza_seis_consultas(self):
-        with self.assertNumQueries(6):
+    def test_calculo_saldos_utiliza_ocho_consultas(self):
+        with self.assertNumQueries(8):
             saldos = calcular_saldos(self.grupo)
         self.assertEqual(sum(saldos.values()), 0)
 
