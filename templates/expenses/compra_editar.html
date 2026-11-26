@@ -8,7 +8,7 @@
     <div>
         <span class="breadcrumb">Edición de compra</span>
         <h1>Editar compra #{{ compra.pk }}</h1>
-        <p>Actualiza la fecha o descripción de la compra.</p>
+        <p>Actualiza los datos, el IVA y el descuento. Puedes corregir los ítems desde esta misma pantalla.</p>
     </div>
     <a class="button outline" href="{% url 'compra_detalle' compra.pk %}">
         Volver al detalle
@@ -17,6 +17,8 @@
 
 <section class="panel feature-panel edit-panel">
     <h2>Información de la compra</h2>
+    <p>Subtotal de ítems: $ {{ subtotal|floatformat:2 }}</p>
+    <p>Las compras con pagos pendientes o confirmados no se pueden modificar.</p>
 
     <form method="post" class="feature-form">
         {% csrf_token %}
@@ -50,5 +52,18 @@
             </a>
         </div>
     </form>
+</section>
+<section class="panel feature-panel">
+    <h2>Ítems de la compra</h2>
+    <div class="table-wrap">
+        <table class="data-table tabla-compras">
+            <thead><tr><th>Descripción</th><th>Valor</th><th>Acción</th></tr></thead>
+            <tbody>
+                {% for item in items_activos %}
+                <tr><td data-etiqueta="Descripción">{{ item.descripcion }}</td><td data-etiqueta="Valor">$ {{ item.valor|floatformat:2 }}</td><td data-etiqueta="Acción"><a class="button outline" href="{% url 'editar_item' item.pk %}">Editar ítem</a></td></tr>
+                {% empty %}<tr><td colspan="3">No hay ítems activos.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
 </section>
 {% endblock %}
