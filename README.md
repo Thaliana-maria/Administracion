@@ -34,6 +34,32 @@ Facilitar el control de los gastos compartidos, mantener un historial de los mov
 - HTML, CSS y JavaScript: estructura, diseño e interacción de las páginas.
 - Git y GitHub: organización del trabajo y control de versiones.
 
+## Instalación local en Windows
+
+Desde PowerShell, dentro de la carpeta que contiene manage.py:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py runserver
+```
+
+Abre http://127.0.0.1:8000/ en el navegador. Para detener el servidor utiliza Ctrl+C. No es necesario instalar otro framework ni configurar PostgreSQL para el desarrollo local.
+
+Si ya tienes una base de datos, sigue primero las instrucciones de actualización de este documento.
+
+### Variables de entorno
+
+| Variable | Uso |
+| --- | --- |
+| DJANGO_DEBUG | True para desarrollo; False para producción. |
+| DJANGO_SECRET_KEY | Clave privada y estable, obligatoria en producción. |
+| DJANGO_ALLOWED_HOSTS | Dominios permitidos separados por comas. |
+| DB_ENGINE | sqlite por defecto; postgresql como opción existente. |
+
+Sin una clave configurada en desarrollo, Django genera una al iniciar el proceso y las sesiones pueden dejar de ser válidas al reiniciar. No publiques claves ni contraseñas en GitHub. La configuración de producción exige HTTPS y una tabla de caché.
+
 ## Arquitectura del sistema
 
 Trabajamos con una arquitectura MVC dentro de un monolito modular. Esto significa que tenemos un solo proyecto dividido en módulos que cumplen diferentes responsabilidades. Django utiliza el patrón MVT, que en nuestro proyecto se relaciona con MVC de la siguiente manera:
@@ -134,7 +160,10 @@ Administracion/
 │   └── inicio.html
 ├── static/
 │   ├── css/app.css
-│   └── js/compra.js
+│   └── js/
+│       ├── compra.js
+│       ├── compra_editar.js
+│       └── confirmaciones.js
 ├── manage.py
 ├── requirements.txt
 ├── ARQUITECTURA.md
@@ -394,7 +423,7 @@ flowchart TD
 
 ## Cálculo de saldos
 
-El saldo tiene en cuenta las compras pagadas, los gastos y ajustes asignados, los pagos enviados y los pagos recibidos.
+El saldo tiene en cuenta las compras pagadas, los gastos y ajustes asignados, los pagos confirmados enviados y recibidos, y las compensaciones aplicadas enviadas y recibidas. Las reservas pendientes no cambian el saldo neto.
 
 - Positivo: el integrante tiene dinero a favor.
 - Negativo: el integrante tiene dinero pendiente por pagar.
@@ -448,9 +477,22 @@ python manage.py migrate
 python manage.py test
 ```
 
-Las migraciones nuevas agregan el estado de archivado, las claves únicas de operación, las revisiones de compras el estado de los pagos y las tablas de compensaciones con su fecha de aplicación. Los grupos existentes conservan el estado activo y los pagos anteriores quedan confirmados por defecto para conservar el cálculo histórico. No se generan revisiones retroactivas de compras existentes.
+Las migraciones nuevas agregan el estado de archivado, las claves únicas de operación, las revisiones de compras, la autorización de datos personales, el estado de los pagos y las tablas de compensaciones con su fecha de aplicación. Los grupos existentes conservan el estado activo y los pagos anteriores quedan confirmados por defecto para conservar el cálculo histórico. No se generan revisiones retroactivas de compras existentes.
 
 En producción, con la configuración de caché de base de datos, ejecuta también python manage.py createcachetable. Comprueba primero los resultados en una copia de la base de datos.
+
+## Pruebas unitarias
+
+Con el entorno virtual activo:
+
+```powershell
+python manage.py test ledger.tests.test_compensaciones -v 2
+python manage.py test ledger.tests.test_saldos -v 2
+python manage.py test ledger.tests.test_obligaciones -v 2
+python manage.py test -v 2
+```
+
+Los seis casos de compensación cubren reservas, aprobación y confirmación, rechazo, cancelación, solicitudes duplicadas y acceso externo. El cálculo de saldos tiene una expectativa de ocho consultas agrupadas, pendiente de verificar mediante las pruebas. Django utiliza una base de datos de prueba separada.
 
 ## Estado de validación
 
