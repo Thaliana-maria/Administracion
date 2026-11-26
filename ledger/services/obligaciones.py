@@ -11,7 +11,7 @@ from expenses.services.permisos import (
     exigir_miembro,
     exigir_puede_editar_pago,
 )
-from ledger.models import AplicacionPago, Obligacion, Pago
+from ledger.models import AplicacionPago, Obligacion, Pago, TramoCompensacion
 from expenses.models import Grupo
 
 
@@ -80,7 +80,10 @@ def _validar_aplicaciones(
         if excluir_pago_id is not None:
             pagos_aplicados = pagos_aplicados.exclude(pago_id=excluir_pago_id)
         monto_aplicado = pagos_aplicados.aggregate(total=Sum("monto"))["total"] or Decimal("0.00")
-        if monto_aplicado + valor > obligacion.monto:
+        reservado_compensacion = TramoCompensacion.objects.filter(
+            obligacion=obligacion, compensacion__estado__in=["pendiente", "aprobada", "aplicada"]
+        ).aggregate(total=Sum("monto"))["total"] or Decimal("0.00")
+        if monto_aplicado + reservado_compensacion + valor > obligacion.monto:
             raise ValidationError("El abono supera el saldo pendiente de la obligación.")
         aplicaciones_validadas.append((obligacion, valor))
     return aplicaciones_validadas
@@ -305,6 +308,11 @@ def registrar_pago_directo(usuario, *, grupo_id, deudor_id, acreedor_id, monto, 
             pago__estado__in=["pendiente", "confirmado"],
         ).values("obligacion_id").annotate(total=Sum("monto"))
     }
+    for identificador, total in TramoCompensacion.objects.filter(
+        obligacion_id__in=[obligacion.pk for obligacion in obligaciones],
+        compensacion__estado__in=["pendiente", "aprobada", "aplicada"],
+    ).values("obligacion_id").annotate(total=Sum("monto")).values_list("obligacion_id", "total"):
+        reservas[identificador] = reservas.get(identificador, Decimal("0.00")) + total
     for obligacion in obligaciones:
         reservado = reservas.get(obligacion.pk, Decimal("0.00"))
         abono = min(restante, obligacion.monto - reservado)
