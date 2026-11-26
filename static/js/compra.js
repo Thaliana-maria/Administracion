@@ -32,10 +32,31 @@ document.addEventListener("DOMContentLoaded", function () {
                 orden.forEach((persona, indice) => partes.set(persona.value, partes.get(persona.value) + base + (indice < sobrante ? 1 : 0)));
             }
         });
+        const subtotal = Array.from(partes.values()).reduce((suma, valor) => suma + valor, 0);
+        const ajuste = Math.round(Number(formulario.elements["impuesto"]?.value || 0) * 100) -
+            Math.round(Number(formulario.elements["descuento"]?.value || 0) * 100);
+        const cuotas = new Map();
+        if (subtotal > 0 && !incompleto) {
+            const magnitud = BigInt(Math.abs(ajuste));
+            const base = BigInt(subtotal);
+            const residuos = personas.filter(persona => partes.get(persona.value) > 0).map(persona => {
+                const producto = magnitud * BigInt(partes.get(persona.value));
+                cuotas.set(persona.value, Number(producto / base));
+                return {persona, residuo: producto % base};
+            });
+            residuos.sort((a, b) => a.residuo === b.residuo
+                ? a.persona.text.toLowerCase().localeCompare(b.persona.text.toLowerCase()) || Number(a.persona.value) - Number(b.persona.value)
+                : a.residuo > b.residuo ? -1 : 1);
+            const sobrante = Math.abs(ajuste) - Array.from(cuotas.values()).reduce((suma, valor) => suma + valor, 0);
+            residuos.slice(0, sobrante).forEach(({persona}) => cuotas.set(persona.value, cuotas.get(persona.value) + 1));
+        }
         contenedor.replaceChildren();
         personas.forEach(persona => {
             const fila = document.createElement("p");
-            fila.textContent = persona.text + ": $ " + partes.get(persona.value).toLocaleString("es-CO");
+            const base = partes.get(persona.value);
+            const ajustePersona = Math.sign(ajuste) * (cuotas.get(persona.value) || 0) / 100;
+            fila.textContent = persona.text + ": $ " + (base + ajustePersona).toLocaleString("es-CO", {maximumFractionDigits: 2}) +
+                (ajustePersona ? " (ajuste: " + ajustePersona.toLocaleString("es-CO", {maximumFractionDigits: 2}) + ")" : "");
             contenedor.appendChild(fila);
         });
         if (incompleto) {
