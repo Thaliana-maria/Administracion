@@ -984,3 +984,39 @@ tbody tr:last-child td {
 .purchase-form [hidden] {
     display: none !important;
 }
+
+
+@media (max-width: 650px) {
+    .side-nav a.active {
+        background: #D8EBF1;
+        color: var(--teal);
+        border-radius: 8px;
+    }
+
+    .tabla-compras td[data-etiqueta="Estado"] {
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .tabla-compras td form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .confirmacion {
+        margin: 16px auto;
+        width: 100%;
+    }
+
+    .confirmacion .quick-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .confirmacion .quick-links > * {
+        flex: 1 1 140px;
+    }
+}
