@@ -126,6 +126,27 @@
 
 </div>
 <section class="panel feature-panel">
+    <h2>Pagos directos disponibles</h2>
+    <p>Valores pendientes sin objeciones ni abonos reservados.</p>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Deudor</th><th>Acreedor</th><th>Valor disponible</th><th>Acción</th></tr></thead>
+            <tbody>
+            {% for pago in pagos_disponibles %}
+                <tr>
+                    <td>{{ pago.deudor.get_full_name|default:pago.deudor.email }}</td>
+                    <td>{{ pago.acreedor.get_full_name|default:pago.acreedor.email }}</td>
+                    <td>$ {{ pago.monto|floatformat:2 }}</td>
+                    <td>{% if not grupo.archivado %}{% if user.id == pago.deudor.id or puede_gestionar %}
+                        <a class="button outline" href="{% url 'pagos_grupo' grupo.id %}?deudor={{ pago.deudor.id }}&amp;acreedor={{ pago.acreedor.id }}&amp;monto={{ pago.monto|stringformat:'f' }}">Registrar pago</a>
+                    {% endif %}{% endif %}</td>
+                </tr>
+            {% empty %}<tr><td colspan="4">No hay pagos directos disponibles.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+<section class="panel feature-panel">
     <div class="section-heading">
         <div>
             <h2>Últimos movimientos</h2>
