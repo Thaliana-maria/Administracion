@@ -107,7 +107,7 @@
                             $ {{ transferencia.monto|floatformat:2 }}
                             {% if transferencia.registrable and user.id == transferencia.deudor.id or transferencia.registrable and puede_gestionar %}
                             <a class="button outline" href="{% url 'pagos_grupo' grupo.id %}?deudor={{ transferencia.deudor.id }}&amp;acreedor={{ transferencia.acreedor.id }}&amp;monto={{ transferencia.monto|stringformat:'f' }}">Registrar pago</a>
-                            {% elif not transferencia.registrable %}<small>Recomendación teórica; no disponible como pago directo.</small>{% endif %}
+                            {% elif not transferencia.registrable %}<small>Esta sugerencia requiere compensar obligaciones entre varias personas. No puede registrarse como pago directo. Consulta los pagos directos disponibles.</small>{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -125,7 +125,7 @@
 </div>
 <section class="panel feature-panel">
     <h2>Pagos directos disponibles</h2>
-    <p>Valores pendientes sin objeciones ni abonos reservados.</p>
+    <p>Alternativas de pago sobre obligaciones reales, descontando abonos pendientes y confirmados. No necesitas realizar una transferencia indirecta para resolver tus deudas.</p>
     <div class="table-wrap">
         <table class="data-table">
             <thead><tr><th>Deudor</th><th>Acreedor</th><th>Valor disponible</th><th>Acción</th></tr></thead>
