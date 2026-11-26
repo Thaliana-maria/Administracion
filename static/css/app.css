@@ -1161,3 +1161,17 @@ tbody tr:last-child td {
 .resumen-item span { color: var(--teal); font-weight: 700; white-space: nowrap; }
 #partes-compra p { padding: 8px 0; margin: 0; border-bottom: 1px solid var(--line); }
 #partes-compra p:last-child { border-bottom: 0; }
+
+.detalle-financiero { margin-bottom: 16px; }
+.tabla-detalle-compra { white-space: normal; }
+.tabla-detalle-compra td { vertical-align: top; overflow-wrap: anywhere; }
+.linea-detalle { display: flex; justify-content: space-between; gap: 12px; padding: 12px 8px; border-top: 1px solid var(--line); font-size: 12px; }
+.total-detalle strong { color: var(--teal); }
+.estado-compra { display: inline-block; background: #D8EBF1; color: #10596C; border-radius: 12px; padding: 3px 8px; font-size: 10px; font-weight: 700; }
+.estado-anulada { background: #E1E8EA; color: #435B63; }
+.ventana-confirmacion .button.danger { background: var(--danger); color: white; }
+@media (max-width: 650px) {
+    .detalle-financiero { grid-template-columns: 1fr; }
+    .tabla-detalle-compra td, .tabla-detalle-compra th { padding: 8px 4px; }
+    .page-heading .quick-links .button { white-space: normal; }
+}
