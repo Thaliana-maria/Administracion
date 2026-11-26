@@ -1,13 +1,13 @@
 ﻿:root {
-    --sidebar: #063746;
-    --teal: #063746;       
-    --background: #F3F7F8;
+    --sidebar: #0B3440;
+    --teal: #10596C;       
+    --background: #F1F5F6;
     --white: #FFFFFF;
     --ink: #1F2D32;        
     --muted: #71858C;
     --line: #DDE7EA;
     --coral: #FBE5DC;
-    --danger: #D95E45;
+    --danger: #BF4824;
     --soft-blue: #E9F1F3;
 }
 
@@ -44,7 +44,7 @@ a {
     display: flex;
     align-items: center;
     padding: 9.5%;
-    background: var(--teal); /* Ahora usar├í correctamente el color oscuro */
+    background: var(--teal);
     color: var(--white);
 }
 
@@ -872,3 +872,63 @@ tbody tr:last-child td {
     }
 }
 
+
+.auth-form form > .button {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.page-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+@media (max-width: 650px) {
+    .auth-brand,
+    .register-screen .auth-brand {
+        min-height: 110px;
+        padding: 20px;
+    }
+
+    .auth-brand h1 {
+        font-size: 23px;
+    }
+
+    .auth-brand p {
+        display: none;
+    }
+
+    .auth-side {
+        align-items: flex-start;
+        padding: 20px;
+    }
+
+    .side-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 5;
+        display: flex;
+        justify-content: space-around;
+        background: var(--white);
+        border-top: 1px solid var(--line);
+        padding: 8px 4px;
+    }
+
+    .side-nav a {
+        color: var(--teal);
+        text-align: center;
+        padding: 10px 5px;
+    }
+
+    .main-content {
+        padding-bottom: 85px;
+    }
+
+    .page-heading {
+        flex-wrap: wrap;
+    }
+}
