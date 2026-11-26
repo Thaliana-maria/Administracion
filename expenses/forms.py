@@ -142,6 +142,10 @@ class EditarItemForm(forms.Form):
         self.fields["beneficiarios"].queryset = (integrantes_activos(grupo) | UsuarioActual.objects.filter(pk=grupo.creador_id)).distinct()
 
 
+class EditarItemConjuntoForm(EditarItemForm):
+    retirar = forms.BooleanField(required=False, label="Retirar este ítem")
+
+
 class EditarPagoForm(forms.Form):
     monto = forms.DecimalField(
         max_digits=12,
