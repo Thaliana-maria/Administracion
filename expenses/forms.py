@@ -103,6 +103,13 @@ class ItemForm(forms.Form):
 
 
 class EditarCompraForm(forms.Form):
+    pagador = forms.ModelChoiceField(queryset=UsuarioActual.objects.none(), label="Quién pagó", required=False)
+
+    def __init__(self, *args, grupo=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if grupo is not None:
+            self.fields["pagador"].queryset = (integrantes_activos(grupo) | UsuarioActual.objects.filter(pk=grupo.creador_id)).distinct()
+
     impuesto = forms.DecimalField(label="IVA adicional (COP)", max_digits=12, decimal_places=2, min_value=0, required=False)
     descuento = forms.DecimalField(label="Descuento general (COP)", max_digits=12, decimal_places=2, min_value=0, required=False)
     fecha = forms.DateField(
