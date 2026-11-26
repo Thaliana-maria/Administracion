@@ -68,6 +68,9 @@ def _validar_aplicaciones(
         ):
             raise ValidationError("El abono no corresponde a una obligación activa de este pago.")
 
+        if obligacion.asignacion.item.compra.revisiones.filter(estado="objetada").exists():
+            raise ValidationError("La compra tiene una objeción sin resolver.")
+
         pagos_aplicados = AplicacionPago.objects.filter(
             obligacion=obligacion,
             anulada=False,
@@ -289,7 +292,7 @@ def registrar_pago_directo(usuario, *, grupo_id, deudor_id, acreedor_id, monto, 
         grupo_id=grupo_id, deudor_id=deudor_id, acreedor_id=acreedor_id,
         anulada=False, asignacion__anulada=False,
         asignacion__item__anulada=False, asignacion__item__compra__anulada=False,
-    ).order_by("pk")
+    ).exclude(asignacion__item__compra__revisiones__estado="objetada").order_by("pk")
     for obligacion in obligaciones:
         reservado = obligacion.aplicaciones.filter(anulada=False, pago__anulada=False, pago__estado="pendiente").aggregate(total=Sum("monto"))["total"] or Decimal("0.00")
         abono = min(restante, obligacion.saldo_pendiente - reservado)
