@@ -396,18 +396,23 @@ def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripc
     if total <= 0 or total > Decimal("9999999999.99"):
         raise ValidationError("El total resultante está fuera del rango permitido.")
     compra.total = total
-    compra.save()
+    hubo_cambios = anterior != _datos_compra(compra)
+    if hubo_cambios:
+        compra.save()
     for item, descripcion, valor, valores in preparados:
         existentes = list(item.asignaciones.filter(anulada=False))
         anteriores = {fila.beneficiario_id: fila.valor_asignado for fila in existentes}
         if item.descripcion == descripcion and item.valor == valor and anteriores == valores and anterior['pagador_id'] == compra.pagador_id:
             continue
+        hubo_cambios = True
         datos_anteriores = {"descripcion": item.descripcion, "valor": str(item.valor)}
         item.descripcion = descripcion
         item.valor = valor
         item.save(update_fields=["descripcion", "valor"])
         _reemplazar_asignaciones(item, usuario, valores, existentes)
         registrar_cambio(usuario, item, "editar", {"antes": datos_anteriores, "despues": {"descripcion": descripcion, "valor": str(valor)}})
+    if not hubo_cambios:
+        return compra
     recalcular_ajustes_compra(compra.pk)
     renovar_revisiones(compra, usuario)
     registrar_cambio(usuario, compra, "editar_items", {"antes": anterior, "despues": _datos_compra(compra)})
