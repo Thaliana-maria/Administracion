@@ -16,13 +16,22 @@
     </div>
 
     <div class="auth-side">
-        <div class="auth-form">
+        <div class="auth-form register-form">
             <h2>Crear cuenta</h2>
 
             <form method="post">
                 {% csrf_token %}
 
-                {{ formulario.as_p }}
+                {% for campo in formulario.hidden_fields %}{{ campo }}{{ campo.errors }}{% endfor %}
+                {% if formulario.non_field_errors %}<div class="form-error" role="alert">{{ formulario.non_field_errors }}</div>{% endif %}
+                {% for campo in formulario.visible_fields %}
+                <div class="purchase-field">
+                    {{ campo.label_tag }}
+                    {{ campo }}
+                    {% if campo.name == "password1" %}<small class="help-text">La contraseña se almacena mediante un hash seguro.</small>{% endif %}
+                    {% for error in campo.errors %}<span class="field-error" role="alert">{{ error }}</span>{% endfor %}
+                </div>
+                {% endfor %}
 
                 <button class="button primary" type="submit">
                     Crear cuenta
