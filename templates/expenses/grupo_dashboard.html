@@ -17,13 +17,13 @@
 <section class="panel feature-panel">
     <div class="section-heading">
         <div>
-            <h2>Saldos del grupo</h2>
+            <h2>Saldos</h2>
             
         </div>
     </div>
 
     <div class="table-wrap">
-        <table class="data-table">
+        <table class="data-table tabla-saldos">
             <thead>
                 <tr>
                     <th>Integrante</th>
@@ -39,14 +39,14 @@
                         {{ usuario.get_full_name|default:usuario.email }}
                         <div class="barra-saldo"><span class="{% if saldo < 0 %}barra-negativa{% endif %}" style="width: {{ porcentaje }}%"></span></div>
                     </td>
-                    <td class="{% if saldo > 0 %}positive{% elif saldo < 0 %}negative{% endif %}">$ {{ saldo|floatformat:2 }}</td>
+                    <td class="{% if saldo > 0 %}positive{% elif saldo < 0 %}negative{% endif %}">{% if saldo > 0 %}+{% endif %}{{ saldo|floatformat:"2g" }} COP</td>
                     <td>
                         {% if saldo > 0 %}
-                            A favor
+                            <span class="estado-saldo favor">A favor</span>
                         {% elif saldo < 0 %}
-                            Pendiente
+                            <span class="estado-saldo debe">Debe</span>
                         {% else %}
-                            Equilibrado
+                            <span class="estado-saldo">Equilibrado</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -60,6 +60,7 @@
             </tbody>
         </table>
     </div>
+    <p class="form-help">La suma de los saldos debe ser $0.</p>
 </section>
 
 <section class="panel feature-panel">
@@ -86,7 +87,7 @@
         </p>
     {% elif transferencias_sugeridas %}
         <div class="table-wrap">
-            <table class="data-table">
+            <table class="data-table tabla-transferencias">
                 <thead>
                     <tr>
                         <th>Deudor</th>
@@ -106,7 +107,7 @@
                         </td>
                         <td>
                             $ {{ transferencia.monto|floatformat:2 }}
-                            {% if transferencia.registrable and user.id == transferencia.deudor.id or transferencia.registrable and puede_gestionar %}
+                            {% if not grupo.archivado %}{% if transferencia.registrable and user.id == transferencia.deudor.id or transferencia.registrable and puede_gestionar %}
                             <a class="button outline" href="{% url 'pagos_grupo' grupo.id %}?deudor={{ transferencia.deudor.id }}&amp;acreedor={{ transferencia.acreedor.id }}&amp;monto={{ transferencia.monto|stringformat:'f' }}">Registrar pago</a>
                             {% elif transferencia.compensable and user.id == transferencia.deudor.id or transferencia.compensable and puede_gestionar %}
                             <form method="post" action="{% url 'solicitar_compensacion' grupo.id %}">{% csrf_token %}
@@ -117,7 +118,7 @@
                                 <button class="button outline" type="submit">Solicitar compensación</button>
                             </form>
                             <small>Requiere la aprobación de todos los participantes.</small>
-                            {% elif not transferencia.registrable %}<small>Consulta los pagos directos disponibles o las solicitudes existentes.</small>{% endif %}
+                            {% elif not transferencia.registrable %}<small>Consulta los pagos directos disponibles o las solicitudes existentes.</small>{% endif %}{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
