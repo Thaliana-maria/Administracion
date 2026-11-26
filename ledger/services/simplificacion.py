@@ -3,8 +3,8 @@ from functools import lru_cache
 from collections import deque
 
 from ledger.services.saldos import calcular_saldos
-from django.db.models import Q, Sum
-from ledger.models import Obligacion
+from django.db.models import Q, Sum, OuterRef, Subquery
+from ledger.models import Obligacion, TramoCompensacion
 
 
 def simplificar_deudas(grupo, *, saldos=None):
@@ -86,6 +86,7 @@ def simplificar_deudas(grupo, *, saldos=None):
 
 
 def transferencias_disponibles(grupo):
+    reservas = TramoCompensacion.objects.filter(obligacion_id=OuterRef('pk'), compensacion__estado__in=['pendiente', 'aprobada', 'aplicada']).order_by().values('obligacion_id').annotate(total=Sum('monto')).values('total')
     obligaciones = Obligacion.objects.filter(
         grupo=grupo, anulada=False, asignacion__anulada=False,
         asignacion__item__anulada=False, asignacion__item__compra__anulada=False,
@@ -93,11 +94,11 @@ def transferencias_disponibles(grupo):
         reservado=Sum("aplicaciones__monto", filter=Q(
             aplicaciones__anulada=False, aplicaciones__pago__anulada=False,
             aplicaciones__pago__estado__in=["pendiente", "confirmado"]
-        ))
+        )), reservado_compensacion=Subquery(reservas)
     )
     montos = {}
-    for deudor_id, acreedor_id, monto, reservado in obligaciones.values_list("deudor_id", "acreedor_id", "monto", "reservado").iterator():
-        pendiente = monto - (reservado or Decimal("0"))
+    for deudor_id, acreedor_id, monto, reservado, compensacion in obligaciones.values_list("deudor_id", "acreedor_id", "monto", "reservado", "reservado_compensacion").iterator():
+        pendiente = monto - (reservado or Decimal("0")) - (compensacion or Decimal("0"))
         if pendiente > 0:
             clave = (deudor_id, acreedor_id)
             montos[clave] = montos.get(clave, Decimal("0")) + pendiente
