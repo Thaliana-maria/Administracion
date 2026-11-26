@@ -377,6 +377,23 @@ Se requiere iniciar sesión para consultar los grupos. Los permisos dependen de 
 
 El proyecto utiliza consultas agrupadas para calcular los saldos, relaciones cargadas junto con los registros principales e índices en campos de búsqueda frecuente. En el dashboard se obtiene la cantidad y el total de pagos mediante una sola consulta. También se limita la lista de compras recientes para evitar cargar todo el historial.
 
+## Actualización de una instalación existente
+
+Antes de actualizar una base de datos con información real, realiza una copia de seguridad. En un entorno de prueba ejecuta:
+
+```bash
+python manage.py check
+python manage.py makemigrations --check --dry-run
+python manage.py showmigrations
+python manage.py migrate --plan
+python manage.py migrate
+python manage.py test
+```
+
+Las migraciones nuevas agregan el estado de archivado, las claves únicas de operación, las revisiones de compras y el estado de los pagos. Los grupos existentes conservan el estado activo y los pagos anteriores quedan confirmados por defecto para conservar el cálculo histórico. No se generan revisiones retroactivas de compras existentes.
+
+En producción, con la configuración de caché de base de datos, ejecuta también python manage.py createcachetable. Comprueba primero los resultados en una copia de la base de datos.
+
 ## Estado de validación
 
 Las pruebas nuevas de seguridad, edición, pagos y rendimiento están incorporadas, pero todavía no se ha ejecutado la suite completa de esta versión. El cumplimiento del RNF-04 (menos de dos segundos con 20 integrantes y 1000 compras) requiere medición. La equivalencia visual con Figma también requiere revisión en navegador.
