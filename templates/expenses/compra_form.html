@@ -9,7 +9,7 @@
 <div class="page-heading">
     <div>
         <span class="breadcrumb">{{ grupo.nombre }}</span>
-        <h1>Registrar una compra</h1>
+        <h1>Nueva compra</h1>
         <p>Registra quién pagó y distribuye los gastos entre los integrantes.</p>
     </div>
     <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
@@ -50,7 +50,7 @@
                 <h2>Detalle de los ítems</h2>
                 <p>Agrega los productos o gastos que forman parte de la compra.</p>
             </div>
-            <span class="badge-count">5 espacios disponibles</span>
+            <button type="button" class="button outline" id="agregar-item">+ Agregar ítem</button>
         </div>
 
         {{ formset.management_form }}
@@ -83,6 +83,18 @@
             {% endfor %}
         </div>
 
+        <template id="plantilla-item">
+            <fieldset class="purchase-item">
+                <legend>Ítem</legend>
+                {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                {% for field in formset.empty_form.visible_fields %}
+                <div class="purchase-field">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                </div>
+                {% endfor %}
+            </fieldset>
+        </template>
         <p class="form-help">
             Si seleccionas «Una persona», debes elegir el integrante beneficiario.
         </p>
