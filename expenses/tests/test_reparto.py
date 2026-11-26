@@ -53,3 +53,28 @@ class PruebasReparto(SimpleTestCase):
         self.assertEqual(resultado[1], 3334)
         self.assertEqual(resultado[2], 3333)
         self.assertEqual(resultado[3], 3333)
+
+
+    def test_rechaza_valores_no_finitos_y_texto(self):
+        for valor in ("NaN", "Infinity", "-Infinity", "texto", None):
+            with self.subTest(valor=valor):
+                with self.assertRaises(ValueError):
+                    repartir(valor, self.personas)
+
+    def test_desempata_nombres_iguales_por_identificador(self):
+        personas = [{"id": 9, "nombre": "Juan"}, {"id": 2, "nombre": "Juan"}]
+        esperado = {2: 6, 9: 5}
+        self.assertEqual(repartir(11, personas), esperado)
+        self.assertEqual(repartir(11, list(reversed(personas))), esperado)
+
+    def test_prioridad_del_pagador_con_nombres_iguales(self):
+        personas = [{"id": 9, "nombre": "Juan"}, {"id": 2, "nombre": "Juan"}]
+        self.assertEqual(repartir(11, personas, pagador=9), {2: 5, 9: 6})
+
+    def test_conserva_total_en_distintos_repartos(self):
+        for valor in (3, 4, 5, 100003, 9999999999):
+            for pagador in (None, 1, 2, 3):
+                with self.subTest(valor=valor, pagador=pagador):
+                    resultado = repartir(valor, self.personas, pagador=pagador)
+                    self.assertEqual(sum(resultado.values()), valor)
+                    self.assertLessEqual(max(resultado.values()) - min(resultado.values()), 1)
