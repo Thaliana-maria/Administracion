@@ -54,12 +54,12 @@ def registrar_grupo(creador, nombre):
 
 
 @transaction.atomic
-def agregar_integrante(grupo, usuario, quien_agrega):
+def agregar_integrante(grupo, usuario, quien_agrega, rol=Membresia.Rol.MIEMBRO):
     """
     Agrega o reactiva un integrante.
 
     Únicamente los administradores del grupo pueden realizar esta acción.
-    Una membresía reactivada vuelve al rol de miembro.
+    El rol se asigna explícitamente y por defecto es miembro.
     """
     grupo_bloqueado = Grupo.objects.select_for_update().filter(
         pk=grupo.pk
@@ -76,6 +76,9 @@ def agregar_integrante(grupo, usuario, quien_agrega):
             "Solo los administradores del grupo pueden agregar integrantes."
         )
 
+    if rol not in Membresia.Rol.values:
+        raise ValidationError("El rol indicado no es válido.")
+
     if usuario.pk == grupo_bloqueado.creador_id:
         raise ValidationError("El creador ya pertenece al grupo.")
 
@@ -89,14 +92,14 @@ def agregar_integrante(grupo, usuario, quien_agrega):
 
     if membresia is not None:
         membresia.activo = True
-        membresia.rol = Membresia.Rol.MIEMBRO
+        membresia.rol = rol
         membresia.save(update_fields=["activo", "rol"])
         accion = "reactivar"
     else:
         membresia = Membresia.objects.create(
             grupo=grupo_bloqueado,
             usuario=usuario,
-            rol=Membresia.Rol.MIEMBRO,
+            rol=rol,
             activo=True,
         )
         accion = "crear"
@@ -106,6 +109,7 @@ def agregar_integrante(grupo, usuario, quien_agrega):
         tipo_registro="Membresia",
         id_registro=membresia.pk,
         accion=accion,
+        detalles={"rol": rol},
     )
 
     return membresia
