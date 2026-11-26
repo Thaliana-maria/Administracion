@@ -132,3 +132,12 @@ class OperacionRegistro(models.Model):
     registro_id = models.PositiveIntegerField(null=True)
     grupo = models.ForeignKey(Grupo, on_delete=models.PROTECT)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+
+
+class RevisionCompra(models.Model):
+    compra = models.ForeignKey(Compra, on_delete=models.PROTECT, related_name="revisiones")
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    estado = models.CharField(max_length=12, choices=[("pendiente", "Pendiente"), ("aceptada", "Aceptada"), ("objetada", "Objetada")], default="pendiente")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["compra", "usuario"], name="una_revision_por_compra_usuario")]
