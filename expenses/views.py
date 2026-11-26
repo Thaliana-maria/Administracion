@@ -208,6 +208,9 @@ def agregar_integrante_vista(request, grupo_id):
             "Solo los administradores pueden agregar integrantes."
         )
 
+    if grupo.archivado:
+        raise PermissionDenied("El grupo está archivado.")
+
     formulario = IntegranteForm(request.POST or None)
 
     if request.method == "POST" and formulario.is_valid():
@@ -216,6 +219,7 @@ def agregar_integrante_vista(request, grupo_id):
                 grupo,
                 formulario.usuario,
                 request.user,
+                rol=formulario.cleaned_data["rol"],
             )
         except ValidationError as error:
             formulario.add_error("email", error)
