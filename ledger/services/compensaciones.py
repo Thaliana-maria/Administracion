@@ -6,7 +6,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from auditlog.services import registrar_cambio
-from expenses.models import Grupo
+from expenses.models import Grupo, Membresia
 from expenses.services.permisos import exigir_miembro, es_administrador
 from ledger.models import Compensacion, AprobacionCompensacion, TramoCompensacion, Obligacion, AplicacionPago
 from ledger.services.obligaciones import _validar_monto
@@ -55,8 +55,10 @@ def solicitar_compensacion(usuario, grupo_id, deudor_id, acreedor_id, monto, cla
     cadena = buscar_cadena(disponibles, deudor_id, acreedor_id, monto)
     if len(cadena) < 3:
         raise ValidationError("No existe una cadena indirecta disponible para este monto.")
-    for persona in cadena:
-        exigir_miembro(grupo_id, persona)
+    integrantes = set(Membresia.objects.filter(grupo=grupo, activo=True).values_list("usuario_id", flat=True))
+    integrantes.add(grupo.creador_id)
+    if not set(cadena).issubset(integrantes):
+        raise ValidationError("Todos los participantes deben pertenecer al grupo.")
     compensacion = Compensacion.objects.create(
         grupo=grupo, solicitante=usuario, deudor_id=deudor_id,
         acreedor_id=acreedor_id, monto=monto, clave=clave,
