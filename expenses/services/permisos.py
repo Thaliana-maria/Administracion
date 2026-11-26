@@ -209,7 +209,7 @@ def exigir_puede_editar_pago(pago, usuario):
 @transaction.atomic
 def retirar_integrante(usuario, grupo_id, miembro_id):
     from django.db.models import Q
-    from ledger.models import Obligacion, Pago
+    from ledger.models import Obligacion, Pago, Compensacion
     from ledger.services.saldos import calcular_saldos
 
     grupo = Grupo.objects.select_for_update().get(pk=grupo_id)
@@ -224,6 +224,8 @@ def retirar_integrante(usuario, grupo_id, miembro_id):
     ).first()
     if membresia is None:
         raise ValidationError("El integrante no está activo.")
+    if Compensacion.objects.filter(grupo=grupo, estado__in=["pendiente", "aprobada"], aprobaciones__usuario_id=miembro_id).exists():
+        raise ValidationError("El integrante tiene compensaciones sin resolver.")
     if calcular_saldos(grupo).get(miembro_id, 0) != 0:
         raise ValidationError("El integrante debe tener su saldo en cero.")
     if RevisionCompra.objects.filter(compra__grupo=grupo, compra__anulada=False, usuario_id=miembro_id).exclude(estado="aceptada").exists():
@@ -249,7 +251,7 @@ def exigir_grupo_activo(grupo_id):
 
 @transaction.atomic
 def archivar_grupo(usuario, grupo_id):
-    from ledger.models import Obligacion, Pago
+    from ledger.models import Obligacion, Pago, Compensacion
     from ledger.services.saldos import calcular_saldos
 
     grupo = Grupo.objects.select_for_update().get(pk=grupo_id)
@@ -260,6 +262,8 @@ def archivar_grupo(usuario, grupo_id):
         return grupo
     if RevisionCompra.objects.filter(compra__grupo=grupo, compra__anulada=False).exclude(estado="aceptada").exists():
         raise ValidationError("Hay revisiones de compras sin resolver.")
+    if Compensacion.objects.filter(grupo=grupo, estado__in=["pendiente", "aprobada"]).exists():
+        raise ValidationError("Hay compensaciones sin resolver.")
     if any(calcular_saldos(grupo).values()):
         raise ValidationError("Todos los saldos deben estar en cero.")
     if Pago.objects.filter(grupo=grupo, anulada=False, estado="pendiente").exists():
