@@ -10,6 +10,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.models import Usuario
+from auditlog.models import Historial
+from expenses.models import Asignacion
+from ledger.models import Obligacion, AplicacionPago
 from expenses.forms import (
     CompraForm,
     EditarCompraForm,
@@ -812,3 +815,24 @@ def lista_compras(request, grupo_id):
     compras = grupo.compras.select_related("pagador").order_by("-fecha", "-id")
     pagina = Paginator(compras, 20).get_page(request.GET.get("pagina"))
     return render(request, "expenses/compras_lista.html", {"grupo": grupo, "compras": pagina})
+
+
+@login_required
+def historial_grupo(request, grupo_id):
+    grupo = _grupo_del_usuario(request, grupo_id)
+    registros = [
+        (("Grupo", "expenses.Grupo"), Grupo.objects.filter(pk=grupo.pk)),
+        (("Membresia", "expenses.Membresia"), Membresia.objects.filter(grupo=grupo)),
+        (("Compra", "expenses.Compra"), Compra.objects.filter(grupo=grupo)),
+        (("Item", "expenses.Item"), Item.objects.filter(compra__grupo=grupo)),
+        (("Asignacion", "expenses.Asignacion"), Asignacion.objects.filter(item__compra__grupo=grupo)),
+        (("Pago", "ledger.Pago"), Pago.objects.filter(grupo=grupo)),
+        (("Obligacion", "ledger.Obligacion"), Obligacion.objects.filter(grupo=grupo)),
+        (("AplicacionPago", "ledger.AplicacionPago"), AplicacionPago.objects.filter(pago__grupo=grupo)),
+    ]
+    filtro = Q(pk__in=[])
+    for tipos, objetos in registros:
+        filtro |= Q(tipo_registro__in=tipos, id_registro__in=objetos.values("pk"))
+    cambios = Historial.objects.filter(filtro).select_related("usuario").order_by("-fecha", "-pk")
+    pagina = Paginator(cambios, 20).get_page(request.GET.get("pagina"))
+    return render(request, "expenses/historial.html", {"grupo": grupo, "cambios": pagina})
