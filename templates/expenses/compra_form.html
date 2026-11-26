@@ -9,11 +9,11 @@
 <div class="page-heading">
     <div>
         <span class="breadcrumb">{{ grupo.nombre }}</span>
-        <h1>Nueva compra</h1>
+        <h1 id="titulo-compra">Nueva compra</h1>
         <p>Registra quién pagó y distribuye los gastos entre los integrantes.</p>
     </div>
     <a class="button outline" href="{% url 'compras_lista' grupo.id %}">
-        Volver al grupo
+        Volver a compras
     </a>
 </div>
 
@@ -69,6 +69,7 @@
             {% for f in formset %}
                 <fieldset class="purchase-item">
                     <legend>Ítem {{ forloop.counter }}</legend>
+                    <div class="resumen-item" hidden><strong></strong><span></span></div>
 
                     {% for hidden in f.hidden_fields %}
                         {{ hidden }}
@@ -91,6 +92,7 @@
         <template id="plantilla-item">
             <fieldset class="purchase-item">
                 <legend>Ítem</legend>
+                    <div class="resumen-item" hidden><strong></strong><span></span></div>
                 {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
                 {% for field in formset.empty_form.visible_fields %}
                 <div class="purchase-field" data-campo="{{ field.name }}">
@@ -110,7 +112,7 @@
     <div class="verificacion-compra">
     <section class="panel feature-panel" id="vista-reparto" hidden>
         <h2>Distribución estimada por integrante</h2>
-        <p class="regla-reparto">Los pesos sobrantes se asignan primero al pagador y luego por orden alfabético. La estimación incluye el IVA y el descuento proporcional. El servidor verifica el reparto definitivo al guardar.</p>
+        <p class="regla-reparto"><strong>Regla de redondeo RN-05.</strong> Los pesos sobrantes se asignan primero al pagador y luego por orden alfabético. La estimación incluye el IVA y el descuento proporcional. El servidor verifica el reparto definitivo al guardar.</p>
         <div id="partes-compra" aria-live="polite"></div>
     </section>
     <section class="panel feature-panel purchase-summary">
@@ -136,7 +138,7 @@
         <button type="submit" class="button primary" id="guardar-compra">
             Guardar compra
         </button>
-        <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
+        <a class="button outline" href="{% url 'compras_lista' grupo.id %}">
             Cancelar
         </a>
     </div>
