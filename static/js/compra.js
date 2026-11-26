@@ -220,7 +220,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (paso === 1) {
                 evento.preventDefault();
                 guardar.disabled = false;
-                mostrarPaso(2);
+                siguiente.click();
             }
         });
         if (agregar) agregar.addEventListener("click", function () { mostrarPaso(paso); });
