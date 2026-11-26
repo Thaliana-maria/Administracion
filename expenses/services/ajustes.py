@@ -55,6 +55,9 @@ def recalcular_ajustes_compra(compra_id):
     grupo_id = Compra.objects.values_list("grupo_id", flat=True).get(pk=compra_id)
     Grupo.objects.select_for_update().get(pk=grupo_id)
     compra = Compra.objects.select_for_update().get(pk=compra_id)
+    from ledger.models import TramoCompensacion
+    if TramoCompensacion.objects.filter(obligacion__asignacion__item__compra=compra, compensacion__estado__in=["pendiente", "aprobada", "aplicada"]).exists():
+        raise ValidationError("No se pueden recalcular ajustes de una compra vinculada a una compensación.")
     asignaciones = list(
         Asignacion.objects.filter(
             item__compra=compra,
