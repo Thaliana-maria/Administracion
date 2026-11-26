@@ -7,7 +7,7 @@ from ledger.models import Obligacion
 
 
 def simplificar_deudas(grupo, *, saldos=None):
-    """Calcula una liquidación con el menor número de transferencias."""
+    """Calcula transferencias sugeridas; para grupos grandes utiliza una aproximación."""
     if saldos is None:
         saldos = calcular_saldos(grupo)
     centavos = tuple(
@@ -95,10 +95,10 @@ def transferencias_disponibles(grupo):
         ))
     )
     montos = {}
-    for obligacion in obligaciones:
-        pendiente = obligacion.monto - (obligacion.reservado or Decimal("0"))
+    for deudor_id, acreedor_id, monto, reservado in obligaciones.values_list("deudor_id", "acreedor_id", "monto", "reservado").iterator():
+        pendiente = monto - (reservado or Decimal("0"))
         if pendiente > 0:
-            clave = (obligacion.deudor_id, obligacion.acreedor_id)
+            clave = (deudor_id, acreedor_id)
             montos[clave] = montos.get(clave, Decimal("0")) + pendiente
     return [{"deudor_id": deudor, "acreedor_id": acreedor, "monto": monto}
             for (deudor, acreedor), monto in sorted(montos.items())]
