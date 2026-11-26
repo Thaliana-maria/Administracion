@@ -90,3 +90,45 @@ class AplicacionPago(models.Model):
             models.CheckConstraint(condition=Q(monto__gt=0), name="aplicacion_monto_positivo"),
         ]
         indexes = [models.Index(fields=["obligacion", "anulada"])]
+
+
+class Compensacion(models.Model):
+    grupo = models.ForeignKey(Grupo, on_delete=models.PROTECT, related_name="compensaciones")
+    solicitante = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="compensaciones_solicitadas")
+    deudor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="compensaciones_enviadas")
+    acreedor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="compensaciones_recibidas")
+    monto = models.DecimalField(max_digits=12, decimal_places=2)
+    estado = models.CharField(max_length=12, choices=[("pendiente", "Pendiente"), ("aprobada", "Aprobada"), ("rechazada", "Rechazada"), ("cancelada", "Cancelada"), ("aplicada", "Aplicada")], default="pendiente")
+    fecha = models.DateTimeField(auto_now_add=True)
+    clave = models.UUIDField(unique=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(monto__gt=0), name="compensacion_monto_positivo"),
+            models.CheckConstraint(condition=~Q(deudor=models.F("acreedor")), name="compensacion_personas_distintas"),
+        ]
+
+
+class AprobacionCompensacion(models.Model):
+    compensacion = models.ForeignKey(Compensacion, on_delete=models.PROTECT, related_name="aprobaciones")
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    estado = models.CharField(max_length=10, choices=[("pendiente", "Pendiente"), ("aceptada", "Aceptada"), ("rechazada", "Rechazada")], default="pendiente")
+    fecha_respuesta = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["compensacion", "usuario"], name="compensacion_aprobacion_unica"),
+        ]
+
+
+class TramoCompensacion(models.Model):
+    compensacion = models.ForeignKey(Compensacion, on_delete=models.PROTECT, related_name="tramos")
+    obligacion = models.ForeignKey(Obligacion, on_delete=models.PROTECT, related_name="tramos_compensacion")
+    orden = models.PositiveIntegerField()
+    monto = models.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(monto__gt=0), name="tramo_compensacion_monto_positivo"),
+            models.UniqueConstraint(fields=["compensacion", "obligacion"], name="compensacion_obligacion_unica"),
+        ]
