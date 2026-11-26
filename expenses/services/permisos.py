@@ -202,3 +202,35 @@ def exigir_puede_editar_pago(pago, usuario):
             "Solo quien registró el pago o un administrador "
             "puede editarlo."
         )
+
+@transaction.atomic
+def retirar_integrante(usuario, grupo_id, miembro_id):
+    from django.db.models import Q
+    from ledger.models import Obligacion, Pago
+    from ledger.services.saldos import calcular_saldos
+
+    grupo = Grupo.objects.select_for_update().get(pk=grupo_id)
+    exigir_miembro(grupo, usuario)
+    if usuario.pk != miembro_id:
+        exigir_administrador(grupo, usuario)
+    if grupo.creador_id == miembro_id:
+        raise ValidationError("No se puede retirar al creador del grupo.")
+    membresia = Membresia.objects.select_for_update().filter(
+        grupo=grupo, usuario_id=miembro_id, activo=True
+    ).first()
+    if membresia is None:
+        raise ValidationError("El integrante no está activo.")
+    if calcular_saldos(grupo).get(miembro_id, 0) != 0:
+        raise ValidationError("El integrante debe tener su saldo en cero.")
+    partes = Q(deudor_id=miembro_id) | Q(acreedor_id=miembro_id)
+    if Pago.objects.filter(partes, grupo=grupo, anulada=False, estado="pendiente").exists():
+        raise ValidationError("Hay pagos pendientes de confirmación.")
+    obligaciones = Obligacion.objects.filter(partes, grupo=grupo, anulada=False,
+        asignacion__anulada=False, asignacion__item__anulada=False,
+        asignacion__item__compra__anulada=False)
+    if any(obligacion.saldo_pendiente > 0 for obligacion in obligaciones):
+        raise ValidationError("El integrante tiene obligaciones directas pendientes.")
+    membresia.activo = False
+    membresia.save(update_fields=["activo"])
+    registrar_cambio(usuario, membresia, "retirar", {"antes": "activo", "despues": "inactivo"})
+    return membresia
