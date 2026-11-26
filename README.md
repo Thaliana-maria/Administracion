@@ -60,7 +60,49 @@ Si ya tienes una base de datos, sigue primero las instrucciones de actualizació
 
 Sin una clave configurada en desarrollo, Django genera una al iniciar el proceso y las sesiones pueden dejar de ser válidas al reiniciar. No publiques claves ni contraseñas en GitHub. La configuración de producción exige HTTPS y una tabla de caché.
 
-## Arquitectura del sistema
+## Arquitectura del sistema: cliente-servidor
+
+La aplicación utiliza una arquitectura cliente-servidor con tres capas lógicas: presentación, procesamiento y persistencia. Los usuarios acceden desde el navegador de un computador o celular. El servidor Django recibe las solicitudes HTTP, valida los permisos, ejecuta las reglas del negocio y consulta o modifica la base de datos mediante el ORM. Devuelve páginas HTML al navegador.
+
+### Diagrama de arquitectura del sistema
+
+```mermaid
+flowchart LR
+    subgraph CL["Cliente - capa de presentación"]
+        PC["Computador / navegador"]
+        MOV["Celular / navegador"]
+        UI["Interfaz web: HTML, CSS y JavaScript"]
+        PC --- UI
+        MOV --- UI
+    end
+    subgraph SV["Servidor - capa de procesamiento"]
+        WEB["Aplicación web Python / Django"]
+        SEG["Autenticación, sesiones y permisos"]
+        NEG["Gestión de grupos, compras, pagos y saldos"]
+        ORM["ORM de Django"]
+        WEB --> SEG
+        SEG --> NEG
+        NEG <--> ORM
+    end
+    subgraph DAT["Capa de persistencia"]
+        BD[("SQLite: db.sqlite3")]
+        PG[("PostgreSQL: opción configurable")]
+    end
+    UI -->|"Solicitudes HTTP / HTTPS"| WEB
+    WEB -->|"Respuestas HTML y recursos web"| UI
+    ORM <-->|"Lectura y escritura local"| BD
+    ORM <-.->|"Conexión alternativa"| PG
+```
+
+| Componente | Responsabilidad |
+| --- | --- |
+| Cliente | Presentar la interfaz, capturar datos y enviar solicitudes. |
+| Servidor | Autenticar usuarios, validar datos, ejecutar cálculos y generar respuestas. |
+| Persistencia | Almacenar usuarios, grupos, compras, obligaciones, pagos e historial. |
+
+El navegador no accede directamente a la base de datos. SQLite es la opción predeterminada y se ejecuta dentro del entorno del servidor, sin un servidor de base de datos independiente. PostgreSQL es una alternativa prevista en la configuración, no una segunda base utilizada simultáneamente. Las tres capas son lógicas y no implican tres máquinas físicas. HTTP se utiliza en desarrollo local y HTTPS es obligatorio con la configuración de producción. No se presupone un proveedor de alojamiento ni un despliegue de producción verificado.
+
+## Arquitectura de software: monolito modular MVC/MVT
 
 Trabajamos con una arquitectura MVC dentro de un monolito modular. Esto significa que tenemos un solo proyecto dividido en módulos que cumplen diferentes responsabilidades. Django utiliza el patrón MVT, que en nuestro proyecto se relaciona con MVC de la siguiente manera:
 
@@ -88,7 +130,7 @@ flowchart TD
     V --> N
 ```
 
-### Infraestructura lógica
+### Diagrama de componentes internos del software
 
 ```mermaid
 flowchart LR
@@ -211,7 +253,7 @@ Conserva el historial de acciones y los datos de anulación. Así podemos conoce
 
 Config contiene la configuración general, las rutas y los puntos de entrada del servidor. Templates reúne las páginas HTML. Static contiene los estilos y el JavaScript que apoya el formulario de compras.
 
-## Base de datos
+## Arquitectura de base de datos
 
 Las entidades principales son:
 
