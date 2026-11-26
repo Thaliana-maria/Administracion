@@ -350,13 +350,15 @@ def anular_compra(usuario, compra_id):
 
 
 @transaction.atomic
-def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripcion=None, pagador_id=None, impuesto=None, descuento=None):
+def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripcion=None, pagador_id=None, impuesto=None, descuento=None, version=None):
     grupo_id = Compra.objects.values_list("grupo_id", flat=True).get(pk=compra_id)
     Grupo.objects.select_for_update().get(pk=grupo_id)
     compra = Compra.objects.select_for_update().get(pk=compra_id)
     exigir_puede_editar_compra(compra, usuario)
     if compra.anulada:
         raise ValidationError("La compra está anulada.")
+    if version is not None and version != version_compra(compra):
+        raise ValidationError("Otra persona modificó la compra. Vuelve a abrirla antes de guardar.")
     _exigir_sin_abonos(compra)
     items = {item.pk: item for item in compra.items.select_for_update().filter(anulada=False)}
     if not cambios or len(cambios) > 100 or set(cambios) != set(items):
@@ -417,3 +419,13 @@ def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripc
     renovar_revisiones(compra, usuario)
     registrar_cambio(usuario, compra, "editar_items", {"antes": anterior, "despues": _datos_compra(compra)})
     return compra
+
+
+def version_compra(compra):
+    from hashlib import sha256
+    import json
+
+    items = list(compra.items.filter(anulada=False).order_by("pk").values_list("pk", "descripcion", "valor"))
+    asignaciones = list(Asignacion.objects.filter(item__compra=compra, item__anulada=False, anulada=False).order_by("pk").values_list("pk", "item_id", "beneficiario_id", "valor_asignado"))
+    datos = [_datos_compra(compra), compra.anulada, items, asignaciones]
+    return sha256(json.dumps(datos, default=str, sort_keys=True).encode()).hexdigest()
