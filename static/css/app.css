@@ -932,3 +932,24 @@ tbody tr:last-child td {
         flex-wrap: wrap;
     }
 }
+
+.auth-form > .button {
+    width: 100%;
+    margin-top: 12px;
+}
+
+.detail-grid > .groups-grid {
+    grid-template-columns: 1fr;
+    align-content: start;
+}
+
+.confirmacion {
+    max-width: 520px;
+    margin: 40px auto;
+}
+
+.purchase-field:has(.field-error) input,
+.purchase-field:has(.field-error) select,
+.auth-form input[aria-invalid="true"] {
+    border-color: var(--danger);
+}
