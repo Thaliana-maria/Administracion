@@ -5,6 +5,7 @@ from auditlog.models import RegistroAnulable
 
 
 class Grupo(models.Model):
+    archivado = models.BooleanField(default=False)
     nombre = models.CharField(max_length=100)
     creador = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
