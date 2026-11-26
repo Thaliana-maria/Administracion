@@ -927,15 +927,15 @@ def archivar_grupo_vista(request, grupo_id):
 
 
 @transaction.atomic
-def registrar_una_vez(usuario, grupo, clave, tipo, servicio, *args, **datos):
+def registrar_una_vez(usuario, grupo_operacion, clave, tipo, servicio, *args, **datos):
     operacion, creada = OperacionRegistro.objects.get_or_create(
-        clave=clave, defaults={"usuario": usuario, "grupo": grupo, "tipo": tipo}
+        clave=clave, defaults={"usuario": usuario, "grupo": grupo_operacion, "tipo": tipo}
     )
-    if operacion.usuario_id != usuario.pk or operacion.grupo_id != grupo.pk or operacion.tipo != tipo:
+    if operacion.usuario_id != usuario.pk or operacion.grupo_id != grupo_operacion.pk or operacion.tipo != tipo:
         raise ValidationError("La clave de operación no corresponde a este registro.")
     if not creada:
         modelo = Compra if tipo == "compra" else Pago
-        return modelo.objects.get(pk=operacion.registro_id, grupo=grupo)
+        return modelo.objects.get(pk=operacion.registro_id, grupo=grupo_operacion)
     registro = servicio(*args, **datos)
     operacion.registro_id = registro.pk
     operacion.save(update_fields=["registro_id"])
