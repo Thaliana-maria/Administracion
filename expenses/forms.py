@@ -41,6 +41,7 @@ class IntegranteForm(forms.Form):
 
 
 class CompraForm(forms.Form):
+    clave_operacion = forms.UUIDField(widget=forms.HiddenInput)
     total_esperado = forms.DecimalField(label="Total de la compra (COP)", max_digits=12, decimal_places=2, min_value=0.01, required=False)
     impuesto = forms.DecimalField(label="IVA adicional (COP)", help_text="Deja en cero si el impuesto ya está incluido o no aplica.", max_digits=12, decimal_places=2, min_value=0, required=False, initial=0)
     descuento = forms.DecimalField(label="Descuento general adicional (COP)", help_text="Deja en cero si los precios ya incluyen las rebajas.", max_digits=12, decimal_places=2, min_value=0, required=False, initial=0)
@@ -146,6 +147,7 @@ class EditarPagoForm(forms.Form):
 
 
 class PagoForm(forms.Form):
+    clave_operacion = forms.UUIDField(widget=forms.HiddenInput)
     deudor = forms.ModelChoiceField(queryset=Usuario.objects.none(), label="Quién pagó")
     acreedor = forms.ModelChoiceField(queryset=Usuario.objects.none(), label="Quién recibió")
     monto = forms.DecimalField(label="Valor (COP)", max_digits=12, decimal_places=2, min_value=0.01)
