@@ -35,6 +35,7 @@ from expenses.services.permisos import (
     exigir_puede_editar_pago,
     es_administrador,
     retirar_integrante,
+    archivar_grupo,
 )
 from expenses.services.reparto import repartir
 from expenses.services.registros import (
@@ -893,4 +894,17 @@ def retirar_integrante_vista(request, grupo_id, miembro_id):
         messages.success(request, "Integrante retirado correctamente.")
         if request.user.pk == miembro_id:
             return redirect("grupos")
+    return redirect("grupo_detalle", grupo_id=grupo.pk)
+
+
+@login_required
+@require_POST
+def archivar_grupo_vista(request, grupo_id):
+    grupo = _grupo_del_usuario(request, grupo_id)
+    try:
+        archivar_grupo(request.user, grupo.pk)
+    except ValidationError as error:
+        messages.error(request, " ".join(error.messages))
+    else:
+        messages.success(request, "Grupo archivado. Puedes consultar su historial.")
     return redirect("grupo_detalle", grupo_id=grupo.pk)
