@@ -4,6 +4,7 @@
 {% block titulo %}{{ grupo.nombre }} | Detalles del grupo{% endblock %}
 
 {% block contenido %}
+<div class="accesos-grupo-movil quick-links"><a href="{% url 'historial_grupo' grupo.id %}">Cambios</a><a href="{% url 'grupos' %}">Mis grupos</a><a href="{% url 'perfil' %}">Mi perfil</a><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="button outline" type="submit">Cerrar sesión</button></form></div>
 <div class="page-heading">
     <div>
         <span class="breadcrumb">Mis grupos / Detalles</span>
