@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
@@ -14,12 +14,20 @@ from expenses.services.permisos import (
 from ledger.models import AplicacionPago, Obligacion, Pago
 
 
+def _validar_monto(monto):
+    try:
+        valor = Decimal(str(monto))
+        if not valor.is_finite() or valor <= 0 or valor > Decimal("9999999999.99") or valor != valor.quantize(Decimal("0.01")):
+            raise ValidationError("El monto debe ser positivo, válido y tener máximo dos decimales.")
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValidationError("El monto indicado no es válido.")
+    return valor
+
+
 def _normalizar_aplicaciones(aplicaciones):
     normalizadas = []
     for obligacion_id, monto in aplicaciones:
-        valor = Decimal(str(monto))
-        if valor <= 0 or valor != valor.quantize(Decimal("0.01")):
-            raise ValidationError("Cada abono debe ser positivo y tener máximo dos decimales.")
+        valor = _validar_monto(monto)
         normalizadas.append((int(obligacion_id), valor))
     if len({obligacion_id for obligacion_id, _ in normalizadas}) != len(normalizadas):
         raise ValidationError("Una obligación no puede repetirse en el mismo pago.")
@@ -42,7 +50,7 @@ def _validar_aplicaciones(
         raise ValidationError("La suma de los abonos debe coincidir con el monto del pago.")
 
     aplicaciones_validadas = []
-    for obligacion_id, valor in normalizadas:
+    for obligacion_id, valor in sorted(normalizadas):
         obligacion = (
             Obligacion.objects.select_for_update()
             .select_related("asignacion__item__compra")
@@ -101,9 +109,9 @@ def registrar_pago(
     if not es_administrador(grupo_id, usuario) and usuario.pk != deudor_id:
         raise PermissionDenied("Un miembro solo puede registrar sus propios pagos.")
 
-    monto = Decimal(str(monto))
-    if monto <= 0 or monto != monto.quantize(Decimal("0.01")):
-        raise ValidationError("El monto debe ser positivo y tener máximo dos decimales.")
+    monto = _validar_monto(monto)
+    if deudor_id == acreedor_id:
+        raise ValidationError("El deudor y el acreedor deben ser personas distintas.")
     aplicaciones_validadas = _validar_aplicaciones(
         grupo_id=grupo_id,
         deudor_id=deudor_id,
@@ -153,9 +161,7 @@ def actualizar_pago(
     if pago.anulada:
         raise ValidationError("No se puede editar un pago anulado.")
 
-    monto = Decimal(str(monto))
-    if monto <= 0 or monto != monto.quantize(Decimal("0.01")):
-        raise ValidationError("El monto debe ser positivo y tener máximo dos decimales.")
+    monto = _validar_monto(monto)
     deudor_id = pago.deudor_id if deudor_id is None else int(deudor_id)
     acreedor_id = pago.acreedor_id if acreedor_id is None else int(acreedor_id)
     if deudor_id == acreedor_id:
