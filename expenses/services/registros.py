@@ -32,7 +32,6 @@ def renovar_revisiones(compra, usuario):
         item__compra=compra, item__anulada=False, anulada=False
     ).values_list("beneficiario_id", flat=True))
     afectados.add(compra.pagador_id)
-    afectados.discard(usuario.pk)
     anteriores = list(compra.revisiones.values("usuario_id", "estado"))
     compra.revisiones.exclude(usuario_id__in=afectados).delete()
     for usuario_id in afectados:
@@ -81,6 +80,7 @@ def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion
 
     datos_nuevos = _datos_compra(compra)
     if datos_anteriores != datos_nuevos:
+        _exigir_sin_abonos(compra)
         compra.save()
         renovar_revisiones(compra, usuario)
         registrar_cambio(
@@ -118,7 +118,7 @@ def actualizar_item(usuario, item_id, *, valor, asignaciones, descripcion=None):
 
     compra = Compra.objects.select_for_update().get(pk=item.compra_id)
     existentes = list(Asignacion.objects.select_for_update().filter(item=item, anulada=False))
-    _exigir_sin_abonos(compra, existentes)
+    _exigir_sin_abonos(compra)
     datos_anteriores = {
         "descripcion": item.descripcion,
         "valor": str(item.valor),
@@ -225,7 +225,7 @@ def anular_item(usuario, item_id):
     if item.anulada or item.compra.anulada:
         raise ValidationError("El ítem ya está anulado.")
     asignaciones = list(item.asignaciones.select_for_update().filter(anulada=False))
-    _exigir_sin_abonos(item.compra, asignaciones)
+    _exigir_sin_abonos(item.compra)
 
     compra = Compra.objects.select_for_update().get(pk=item.compra_id)
     total_items = Item.objects.filter(compra=compra, anulada=False).aggregate(
