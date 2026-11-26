@@ -124,3 +124,11 @@ class AjusteCompra(models.Model):
                 name="un_ajuste_por_beneficiario_compra",
             )
         ]
+
+
+class OperacionRegistro(models.Model):
+    clave = models.UUIDField(unique=True)
+    tipo = models.CharField(max_length=10)
+    registro_id = models.PositiveIntegerField(null=True)
+    grupo = models.ForeignKey(Grupo, on_delete=models.PROTECT)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
