@@ -164,6 +164,8 @@ def actualizar_pago(
     exigir_puede_editar_pago(pago, usuario)
     if pago.anulada:
         raise ValidationError("No se puede editar un pago anulado.")
+    if pago.estado != "pendiente":
+        raise ValidationError("Solo se pueden editar pagos pendientes.")
 
     monto = _validar_monto(monto)
     deudor_id = pago.deudor_id if deudor_id is None else int(deudor_id)
@@ -236,10 +238,15 @@ def actualizar_pago(
 @transaction.atomic
 def anular_pago(usuario, pago_id):
     pago = Pago.objects.select_for_update().get(pk=pago_id)
-    exigir_puede_editar_pago(pago, usuario)
+    if pago.estado == "confirmado" and usuario.pk == pago.acreedor_id:
+        exigir_miembro(pago.grupo_id, usuario)
+    else:
+        exigir_puede_editar_pago(pago, usuario)
     if pago.anulada:
         raise ValidationError("El pago ya está anulado.")
 
+    if pago.estado == "confirmado" and usuario.pk != pago.acreedor_id:
+        raise PermissionDenied("Solo el acreedor puede anular un pago confirmado.")
     detalles = {
         "monto": str(pago.monto),
         "deudor_id": pago.deudor_id,
