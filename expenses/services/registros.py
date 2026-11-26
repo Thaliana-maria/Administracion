@@ -350,7 +350,7 @@ def anular_compra(usuario, compra_id):
 
 
 @transaction.atomic
-def actualizar_items_compra(usuario, compra_id, cambios):
+def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripcion=None, pagador_id=None, impuesto=None, descuento=None):
     grupo_id = Compra.objects.values_list("grupo_id", flat=True).get(pk=compra_id)
     Grupo.objects.select_for_update().get(pk=grupo_id)
     compra = Compra.objects.select_for_update().get(pk=compra_id)
@@ -361,6 +361,22 @@ def actualizar_items_compra(usuario, compra_id, cambios):
     items = {item.pk: item for item in compra.items.select_for_update().filter(anulada=False)}
     if not cambios or len(cambios) > 100 or set(cambios) != set(items):
         raise ValidationError("Los ítems no coinciden con la compra actual.")
+    anterior = _datos_compra(compra)
+    if pagador_id is not None:
+        if pagador_id != compra.grupo.creador_id and not Membresia.objects.filter(grupo=compra.grupo, usuario_id=pagador_id, activo=True).exists():
+            raise ValidationError("El pagador debe pertenecer al grupo.")
+        compra.pagador_id = pagador_id
+    if fecha is not None:
+        compra.fecha = fecha
+    if descripcion is not None:
+        compra.descripcion = descripcion
+    if impuesto is not None:
+        compra.impuesto = impuesto
+    if descuento is not None:
+        compra.descuento = descuento
+    for monto in (compra.impuesto, compra.descuento):
+        if not monto.is_finite() or monto < 0 or monto > Decimal("9999999999.99") or monto != monto.quantize(Decimal("0.01")):
+            raise ValidationError("El IVA o descuento no es válido.")
     preparados = []
     subtotal = Decimal("0")
     for identificador, datos in cambios.items():
@@ -379,11 +395,12 @@ def actualizar_items_compra(usuario, compra_id, cambios):
     total = subtotal + compra.impuesto - compra.descuento
     if total <= 0 or total > Decimal("9999999999.99"):
         raise ValidationError("El total resultante está fuera del rango permitido.")
-    anterior = _datos_compra(compra)
+    compra.total = total
+    compra.save()
     for item, descripcion, valor, valores in preparados:
         existentes = list(item.asignaciones.filter(anulada=False))
         anteriores = {fila.beneficiario_id: fila.valor_asignado for fila in existentes}
-        if item.descripcion == descripcion and item.valor == valor and anteriores == valores:
+        if item.descripcion == descripcion and item.valor == valor and anteriores == valores and anterior['pagador_id'] == compra.pagador_id:
             continue
         datos_anteriores = {"descripcion": item.descripcion, "valor": str(item.valor)}
         item.descripcion = descripcion
@@ -391,8 +408,6 @@ def actualizar_items_compra(usuario, compra_id, cambios):
         item.save(update_fields=["descripcion", "valor"])
         _reemplazar_asignaciones(item, usuario, valores, existentes)
         registrar_cambio(usuario, item, "editar", {"antes": datos_anteriores, "despues": {"descripcion": descripcion, "valor": str(valor)}})
-    compra.total = total
-    compra.save(update_fields=["total"])
     recalcular_ajustes_compra(compra.pk)
     renovar_revisiones(compra, usuario)
     registrar_cambio(usuario, compra, "editar_items", {"antes": anterior, "despues": _datos_compra(compra)})
