@@ -2,18 +2,18 @@
 {% block titulo %}Compensaciones | {{ grupo.nombre }}{% endblock %}
 {% block contenido %}
 <div class="page-heading"><div><span class="breadcrumb">Pagos entre integrantes</span><h1>Compensaciones</h1></div><a class="button outline" href="{% url 'pagos_grupo' grupo.id %}">Volver a pagos</a></div>
-<section class="panel feature-panel">
+<section class="panel feature-panel pantalla-compensaciones">
 <h2>Solicitudes de compensación</h2>
 <p>Todos los participantes deben aceptar antes de que el acreedor confirme la recepción del dinero.</p>
 {% for solicitud in solicitudes %}
-<div class="panel">
+<div class="tarjeta-compensacion">
 <h3>{{ solicitud.deudor.get_full_name|default:solicitud.deudor.email }} → {{ solicitud.acreedor.get_full_name|default:solicitud.acreedor.email }}</h3>
-<p><strong>$ {{ solicitud.monto|floatformat:2 }}</strong> · {{ solicitud.get_estado_display }}</p>
+<p class="resumen-compensacion"><strong>$ {{ solicitud.monto|floatformat:2 }}</strong><span class="estado-compensacion estado-{{ solicitud.estado }}">{{ solicitud.get_estado_display }}</span></p>
 <p>Solicitada: {{ solicitud.fecha|date:"d/m/Y H:i" }}</p>
 {% if solicitud.fecha_aplicacion %}<p>Aplicada: {{ solicitud.fecha_aplicacion|date:"d/m/Y H:i" }}</p>{% endif %}
-<div class="table-wrap"><table class="data-table"><thead><tr><th>Integrante</th><th>Estado</th></tr></thead><tbody>
+<div class="table-wrap"><table class="data-table tabla-compensacion"><thead><tr><th>Integrante</th><th>Estado</th></tr></thead><tbody>
 {% for aprobacion in solicitud.aprobaciones.all %}
-<tr><td>{{ aprobacion.usuario.get_full_name|default:aprobacion.usuario.email }}</td><td>{{ aprobacion.get_estado_display }}
+<tr><td data-etiqueta="Integrante">{{ aprobacion.usuario.get_full_name|default:aprobacion.usuario.email }}</td><td data-etiqueta="Estado">{{ aprobacion.get_estado_display }}
 {% if not grupo.archivado and solicitud.estado == "pendiente" and aprobacion.usuario_id == user.id and aprobacion.estado == "pendiente" %}
 <form method="post" action="{% url 'responder_compensacion' grupo.id solicitud.id %}">{% csrf_token %}<button class="button primary" name="accion" value="aceptar">Aceptar</button><button class="button outline" name="accion" value="rechazar">Rechazar</button></form>
 {% endif %}</td></tr>
