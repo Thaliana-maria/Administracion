@@ -1155,3 +1155,9 @@ tbody tr:last-child td {
     .datos-compra .purchase-items { grid-template-columns: 1fr; }
     .datos-compra .purchase-item { padding: 12px; }
 }
+
+
+.resumen-item { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; overflow-wrap: anywhere; }
+.resumen-item span { color: var(--teal); font-weight: 700; white-space: nowrap; }
+#partes-compra p { padding: 8px 0; margin: 0; border-bottom: 1px solid var(--line); }
+#partes-compra p:last-child { border-bottom: 0; }
