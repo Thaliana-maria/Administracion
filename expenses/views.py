@@ -361,6 +361,7 @@ def detalle_compra(request, compra_id):
         {
             "compra": compra,
             "items": items,
+            "puede_editar": not compra.anulada and not compra.grupo.archivado and (compra.registrado_por_id == request.user.pk or es_administrador(compra.grupo, request.user)),
         },
     )
 
@@ -889,7 +890,7 @@ def pagos_grupo(request, grupo_id):
             return redirect("pagos_grupo", grupo_id=grupo.pk)
     pagos = grupo.pagos.select_related("deudor", "acreedor").order_by("-fecha", "-pk")
     pagina = Paginator(pagos, 20).get_page(request.GET.get("pagina"))
-    return render(request, "expenses/pagos.html", {"grupo": grupo, "formulario": formulario, "pagos": pagina})
+    return render(request, "expenses/pagos.html", {"grupo": grupo, "formulario": formulario, "pagos": pagina, "puede_gestionar": es_administrador(grupo, request.user)})
 
 
 @login_required
