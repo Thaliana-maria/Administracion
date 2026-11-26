@@ -4,6 +4,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
@@ -794,3 +795,10 @@ def dashboard_grupo(request, grupo_id):
             ),
         },
     )
+
+@login_required
+def lista_compras(request, grupo_id):
+    grupo = _grupo_del_usuario(request, grupo_id)
+    compras = grupo.compras.select_related("pagador").order_by("-fecha", "-id")
+    pagina = Paginator(compras, 20).get_page(request.GET.get("pagina"))
+    return render(request, "expenses/compras_lista.html", {"grupo": grupo, "compras": pagina})
