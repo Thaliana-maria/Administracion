@@ -260,6 +260,9 @@ def agregar_integrante_vista(request, grupo_id):
 @login_required
 def nueva_compra(request, grupo_id):
     grupo = _grupo_del_usuario(request, grupo_id)
+    if grupo.archivado:
+        messages.error(request, "El grupo está archivado y es de solo lectura.")
+        return redirect("compras_lista", grupo_id=grupo.pk)
     miembros = _miembros(grupo)
 
     ItemFormSet = forms.formset_factory(
@@ -864,6 +867,8 @@ def historial_grupo(request, grupo_id):
 @require_http_methods(["GET", "POST"])
 def pagos_grupo(request, grupo_id):
     grupo = _grupo_del_usuario(request, grupo_id)
+    if grupo.archivado and request.method == "POST":
+        raise PermissionDenied("El grupo está archivado.")
     formulario = PagoForm(request.POST or None, miembros=_miembros(grupo),
         usuario=request.user, administrador=es_administrador(grupo, request.user),
         initial={"deudor": request.GET.get("deudor", request.user.pk) if es_administrador(grupo, request.user) else request.user.pk, "acreedor": request.GET.get("acreedor"), "monto": request.GET.get("monto"), "clave_operacion": uuid4()})
