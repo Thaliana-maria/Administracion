@@ -1,12 +1,21 @@
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+from django.core.management.utils import get_random_secret_key
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "clave-solo-para-desarrollo")
 DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() == "true"
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured("Configura DJANGO_SECRET_KEY para producción.")
+    SECRET_KEY = get_random_secret_key()
+if not DEBUG and SECRET_KEY == "clave-solo-para-desarrollo":
+    raise ImproperlyConfigured("La clave de desarrollo no se permite en producción.")
 ALLOWED_HOSTS = os.environ.get(
     "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost"
 ).split(",")
@@ -95,6 +104,7 @@ LOGIN_REDIRECT_URL = "inicio"
 LOGOUT_REDIRECT_URL = "login"
 
 if not DEBUG:
+    SECURE_SSL_REDIRECT = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
