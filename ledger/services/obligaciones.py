@@ -107,7 +107,9 @@ def registrar_pago(
     aplicaciones,
     estado="confirmado",
 ):
-    Grupo.objects.select_for_update().get(pk=grupo_id)
+    grupo = Grupo.objects.select_for_update().get(pk=grupo_id)
+    if grupo.archivado:
+        raise ValidationError("El grupo está archivado.")
     exigir_miembro(grupo_id, usuario)
     if not es_administrador(grupo_id, usuario) and usuario.pk != deudor_id:
         raise PermissionDenied("Un miembro solo puede registrar sus propios pagos.")
@@ -238,6 +240,8 @@ def actualizar_pago(
 @transaction.atomic
 def anular_pago(usuario, pago_id):
     pago = Pago.objects.select_for_update().get(pk=pago_id)
+    if Grupo.objects.filter(pk=pago.grupo_id, archivado=True).exists():
+        raise ValidationError("El grupo está archivado.")
     if pago.estado == "confirmado" and usuario.pk == pago.acreedor_id:
         exigir_miembro(pago.grupo_id, usuario)
     else:
@@ -266,7 +270,9 @@ def anular_pago(usuario, pago_id):
 
 @transaction.atomic
 def registrar_pago_directo(usuario, *, grupo_id, deudor_id, acreedor_id, monto, fecha):
-    Grupo.objects.select_for_update().get(pk=grupo_id)
+    grupo = Grupo.objects.select_for_update().get(pk=grupo_id)
+    if grupo.archivado:
+        raise ValidationError("El grupo está archivado.")
     exigir_miembro(grupo_id, usuario)
     if not es_administrador(grupo_id, usuario) and usuario.pk != deudor_id:
         raise PermissionDenied("Un miembro solo puede registrar sus propios pagos.")
@@ -294,7 +300,9 @@ def registrar_pago_directo(usuario, *, grupo_id, deudor_id, acreedor_id, monto, 
 
 @transaction.atomic
 def responder_pago(usuario, grupo_id, pago_id, confirmar):
-    Grupo.objects.select_for_update().get(pk=grupo_id)
+    grupo = Grupo.objects.select_for_update().get(pk=grupo_id)
+    if grupo.archivado:
+        raise ValidationError("El grupo está archivado.")
     exigir_miembro(grupo_id, usuario)
     pago = Pago.objects.select_for_update().filter(pk=pago_id, grupo_id=grupo_id).first()
     if pago is None or pago.acreedor_id != usuario.pk:
