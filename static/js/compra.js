@@ -94,6 +94,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const impuesto = Number(formulario.elements["impuesto"]?.value || 0);
         const descuento = Number(formulario.elements["descuento"]?.value || 0);
+        const moneda = valor => "$ " + valor.toLocaleString("es-CO", {maximumFractionDigits: 2});
+        [["subtotal-compra", total], ["iva-compra", impuesto], ["descuento-compra", descuento]].forEach(([id, valor]) => {
+            const elemento = document.getElementById(id);
+            if (elemento) elemento.textContent = moneda(valor);
+        });
         total += impuesto - descuento;
         const esperado = formulario.elements["total_esperado"];
         if (esperado) {
@@ -105,6 +110,8 @@ document.addEventListener("DOMContentLoaded", function () {
             verificacion.textContent = !esperado || !esperado.value ? "Indica el total del recibo para verificarlo." : coincide ? "El total coincide con el recibo." : "El total no coincide con el recibo.";
             verificacion.classList.toggle("field-error", Boolean(esperado && esperado.value && !coincide));
         }
+        const botonSiguiente = document.getElementById("paso-siguiente");
+        if (botonSiguiente) botonSiguiente.disabled = total <= 0 || Boolean(esperado && esperado.validity.customError);
         mostrarReparto();
         totalElemento.textContent = "$ " + total.toLocaleString(
             "es-CO",
@@ -162,12 +169,17 @@ document.addEventListener("DOMContentLoaded", function () {
         anterior.hidden = paso !== 2;
         guardar.hidden = paso !== 2;
         if (agregar) agregar.hidden = paso !== 1;
+        const tituloItems = document.getElementById("titulo-items");
+        if (tituloItems) tituloItems.textContent = paso === 1 ? "Ítems de la compra" : "Asignar cada ítem";
         tituloPaso.textContent = paso === 1 ? "Paso 1 de 2: datos de la compra" : "Paso 2 de 2: asignar gastos";
     }
     if (siguiente && anterior && guardar && tituloPaso && !formulario.querySelector(".purchase-field .field-error, .form-error, .errorlist")) {
         mostrarPaso(1);
         siguiente.addEventListener("click", function () {
-            if (formulario.reportValidity()) mostrarPaso(2);
+            const visibles = Array.from(formulario.elements).filter(campo => campo.willValidate && !campo.closest("[hidden]"));
+            const incorrecto = visibles.find(campo => !campo.checkValidity());
+            if (incorrecto) { incorrecto.reportValidity(); return; }
+            mostrarPaso(2);
         });
         anterior.addEventListener("click", function () { mostrarPaso(1); });
         formulario.addEventListener("submit", function (evento) {
