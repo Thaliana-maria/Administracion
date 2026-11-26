@@ -28,9 +28,10 @@
 
     <section class="panel feature-panel">
         <h2>Información general</h2>
+        <p id="paso-compra">Paso 1 de 2: datos de la compra</p>
         <div class="feature-form">
             {% for field in formulario %}
-                <div class="purchase-field">
+                <div class="purchase-field" data-campo="{{ field.name }}">
                     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                     {{ field }}
                     {% if field.help_text %}
@@ -71,9 +72,10 @@
                     {% endfor %}
 
                     {% for field in f.visible_fields %}
-                        <div class="purchase-field">
+                        <div class="purchase-field" data-campo="{{ field.name }}">
                             <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                             {{ field }}
+                            {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
                             {% for error in field.errors %}
                                 <span class="field-error">{{ error }}</span>
                             {% endfor %}
@@ -91,6 +93,7 @@
                 <div class="purchase-field">
                     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                     {{ field }}
+                    {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
                 </div>
                 {% endfor %}
             </fieldset>
@@ -112,7 +115,9 @@
     </section>
 
     <div class="quick-links">
-        <button type="submit" class="button primary">
+        <button type="button" class="button outline" id="paso-anterior" hidden>Anterior</button>
+        <button type="button" class="button primary" id="paso-siguiente" hidden>Siguiente: asignar</button>
+        <button type="submit" class="button primary" id="guardar-compra">
             Guardar compra
         </button>
         <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
