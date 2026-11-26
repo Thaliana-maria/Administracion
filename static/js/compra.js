@@ -28,6 +28,12 @@ document.addEventListener("DOMContentLoaded", function () {
         if (esperado) {
             esperado.setCustomValidity(esperado.value && Math.round(Number(esperado.value) * 100) !== Math.round(total * 100) ? "El total no coincide con los ítems, IVA y descuento." : "");
         }
+        const verificacion = document.getElementById("verificacion-total");
+        if (verificacion) {
+            const coincide = esperado && esperado.value && Math.round(Number(esperado.value) * 100) === Math.round(total * 100);
+            verificacion.textContent = !esperado || !esperado.value ? "Indica el total del recibo para verificarlo." : coincide ? "El total coincide con el recibo." : "El total no coincide con el recibo.";
+            verificacion.classList.toggle("field-error", Boolean(esperado && esperado.value && !coincide));
+        }
         totalElemento.textContent = "$ " + total.toLocaleString(
             "es-CO",
             {
@@ -83,7 +89,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (agregar) agregar.hidden = paso !== 1;
         tituloPaso.textContent = paso === 1 ? "Paso 1 de 2: datos de la compra" : "Paso 2 de 2: asignar gastos";
     }
-    if (siguiente && anterior && guardar && tituloPaso && !formulario.querySelector(".field-error, .form-error")) {
+    if (siguiente && anterior && guardar && tituloPaso && !formulario.querySelector(".purchase-field .field-error, .form-error, .errorlist")) {
         mostrarPaso(1);
         siguiente.addEventListener("click", function () {
             if (formulario.reportValidity()) mostrarPaso(2);
