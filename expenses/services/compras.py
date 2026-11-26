@@ -28,6 +28,9 @@ def registrar_grupo(creador, nombre):
     """Crea un grupo y registra al creador como su primer administrador."""
     nombre = (nombre or "").strip()
 
+    if len(nombre) > 100:
+        raise ValidationError("El nombre del grupo admite máximo 100 caracteres.")
+
     if not nombre:
         raise ValidationError("El nombre del grupo es obligatorio.")
 
@@ -182,6 +185,9 @@ def validar_items(grupo, items):
                 f"Ítem {posicion}: la descripción es obligatoria."
             )
 
+        if len(descripcion) + (10 if item.get("destino") == "mascota" else 0) > 150:
+            raise ValidationError(f"Ítem {posicion}: la descripción supera el máximo permitido.")
+
         valor = _valor_entero_positivo(
             item.get("valor"),
             posicion,
@@ -309,6 +315,10 @@ def registrar_compra(
         raise ValidationError("El total de la compra debe ser positivo.")
     if total > Decimal("9999999999.99"):
         raise ValidationError("El total de la compra supera el máximo permitido.")
+
+    descripcion = (descripcion or "").strip()
+    if len(descripcion) > 150:
+        raise ValidationError("La descripción de la compra admite máximo 150 caracteres.")
 
     compra = Compra.objects.create(
         grupo=grupo_bloqueado,
