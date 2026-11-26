@@ -21,7 +21,7 @@ def proteger_obligaciones_con_abonos(sender, instance, **kwargs):
     except ObjectDoesNotExist:
         return
 
-    if not obligacion.aplicaciones.filter(anulada=False, pago__anulada=False).exists():
+    if not obligacion.aplicaciones.filter(anulada=False, pago__anulada=False, pago__estado__in=["pendiente", "confirmado"]).exists():
         return
     anulacion_sin_edicion = (
         instance.anulada
