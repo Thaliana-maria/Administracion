@@ -15,9 +15,7 @@
         <h1>Detalle de la compra</h1>
         <p>Consulta los productos y la distribución de los gastos.</p>
     </div>
-    <a class="button outline" href="{% url 'grupo_detalle' compra.grupo.id %}">
-        Volver al grupo
-    </a>
+    <div class="quick-links">{% if puede_editar %}<a class="button outline" href="{% url 'editar_compra' compra.id %}">Editar compra</a><a class="button danger" href="{% url 'confirmar_anulacion_compra' compra.id %}">Anular compra</a>{% endif %}<a class="button outline" href="{% url 'compras_lista' compra.grupo.id %}">Volver a compras</a></div>
 </div>
 
 <section class="panel feature-panel">
@@ -63,6 +61,9 @@
 
 <section class="panel feature-panel">
     <h2>Información de la compra</h2>
+    <p>Estado: {% if compra.anulada %}Anulada{% else %}Activa{% endif %}</p>
+    <p>IVA adicional: $ {{ compra.impuesto|floatformat:2 }}</p>
+    <p>Descuento: $ {{ compra.descuento|floatformat:2 }}</p>
 
     <div class="purchase-information">
         <div>
@@ -98,6 +99,7 @@
                     </strong>
                 </div>
 
+                {% if item.anulada %}<p>Ítem anulado</p>{% elif puede_editar %}<a class="button outline" href="{% url 'editar_item' item.id %}">Editar ítem</a>{% endif %}
                 <h4>Beneficiarios y valores asignados</h4>
 
                 <div class="table-wrap">
@@ -115,7 +117,7 @@
                                         {{ asignacion.beneficiario.get_full_name|default:asignacion.beneficiario.email }}
                                     </td>
                                     <td>
-                                        $ {{ asignacion.valor_asignado|floatformat:2 }}
+                                        $ {{ asignacion.valor_asignado|floatformat:2 }}{% if asignacion.anulada %} (Anulada){% endif %}
                                     </td>
                                 </tr>
                             {% empty %}
