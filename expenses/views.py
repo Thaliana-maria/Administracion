@@ -170,17 +170,6 @@ def crear_grupo(request):
 def detalle_grupo(request, grupo_id):
     grupo = _grupo_del_usuario(request, grupo_id)
 
-    miembros = _miembros(grupo)
-    saldos = calcular_saldos(grupo)
-
-    filas = [
-        (
-            usuario,
-            saldos.get(usuario.id, Decimal("0.00")),
-        )
-        for usuario in miembros
-    ]
-
     membresias = list(
         Membresia.objects.filter(
             grupo=grupo,
@@ -192,21 +181,12 @@ def detalle_grupo(request, grupo_id):
         )
     )
 
-    compras = grupo.compras.select_related(
-        "pagador"
-    ).order_by(
-        "-fecha",
-        "-id",
-    )[:20]
 
     return render(
         request,
         "expenses/grupo_detalle.html",
         {
             "grupo": grupo,
-            "filas": filas,
-            "compras": compras,
-            "miembros": miembros,
             "membresias": membresias,
             "formulario_nombre": GrupoForm(initial={"nombre": grupo.nombre}),
             "puede_gestionar": es_administrador(
