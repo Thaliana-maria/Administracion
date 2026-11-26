@@ -42,8 +42,8 @@ class IntegranteForm(forms.Form):
 
 class CompraForm(forms.Form):
     total_esperado = forms.DecimalField(label="Total de la compra (COP)", max_digits=12, decimal_places=2, min_value=0.01, required=False)
-    impuesto = forms.DecimalField(label="IVA (COP)", max_digits=12, decimal_places=2, min_value=0, required=False, initial=0)
-    descuento = forms.DecimalField(label="Descuento (COP)", max_digits=12, decimal_places=2, min_value=0, required=False, initial=0)
+    impuesto = forms.DecimalField(label="IVA adicional (COP)", help_text="Deja en cero si el impuesto ya está incluido o no aplica.", max_digits=12, decimal_places=2, min_value=0, required=False, initial=0)
+    descuento = forms.DecimalField(label="Descuento general adicional (COP)", help_text="Deja en cero si los precios ya incluyen las rebajas.", max_digits=12, decimal_places=2, min_value=0, required=False, initial=0)
 
     pagador = forms.ModelChoiceField(
         queryset=Usuario.objects.none(),
@@ -69,7 +69,8 @@ class CompraForm(forms.Form):
 class ItemForm(forms.Form):
     descripcion = forms.CharField(label="Ítem", max_length=150)
     valor = forms.DecimalField(
-        label="Valor",
+        label="Valor del ítem (COP)",
+        help_text="Si tiene un descuento individual, registra el precio final del producto.",
         min_value=1,
         max_digits=10,
         decimal_places=0
