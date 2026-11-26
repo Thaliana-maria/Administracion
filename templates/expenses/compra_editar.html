@@ -17,6 +17,7 @@
 
 <form method="post" class="feature-form">
     {% csrf_token %}
+    <input type="hidden" name="version_compra" value="{{ version_compra }}">
 <section class="panel feature-panel edit-panel">
     <h2>Información de la compra</h2>
     <p>Subtotal de ítems: $ {{ subtotal|floatformat:2 }}</p>
