@@ -30,7 +30,8 @@
         <h2>Información general</h2>
         <p id="paso-compra">Paso 1 de 2: datos de la compra</p>
         <div class="feature-form">
-            {% for field in formulario %}
+            {% for oculto in formulario.hidden_fields %}{{ oculto }}{{ oculto.errors }}{% endfor %}
+            {% for field in formulario.visible_fields %}
                 <div class="purchase-field" data-campo="{{ field.name }}">
                     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                     {{ field }}
