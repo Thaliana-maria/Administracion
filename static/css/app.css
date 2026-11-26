@@ -1020,3 +1020,30 @@ tbody tr:last-child td {
         flex: 1 1 140px;
     }
 }
+
+
+.ventana-confirmacion {
+    width: min(480px, calc(100% - 32px));
+    max-height: calc(100% - 32px);
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 24px;
+    background: #fff;
+    color: var(--ink);
+}
+
+.ventana-confirmacion::backdrop {
+    background: rgba(11, 52, 64, .55);
+}
+
+.ventana-confirmacion h2 {
+    color: var(--danger);
+}
+
+.ventana-confirmacion .quick-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+}
