@@ -668,10 +668,14 @@ def confirmar_anulacion_pago(request, pago_id):
         pk=pago_id,
     )
 
-    exigir_puede_editar_pago(
-        pago,
-        request.user,
-    )
+    exigir_miembro(pago.grupo, request.user)
+    if pago.grupo.archivado or pago.anulada:
+        raise PermissionDenied("El pago es de solo lectura.")
+    if pago.estado == "confirmado":
+        if request.user.pk != pago.acreedor_id:
+            raise PermissionDenied("Solo el acreedor puede anular un pago confirmado.")
+    else:
+        exigir_puede_editar_pago(pago, request.user)
 
     if request.method == "POST" and request.POST.get("confirmar") == "si":
         try:
@@ -688,7 +692,7 @@ def confirmar_anulacion_pago(request, pago_id):
                 "El pago fue anulado y quedó en el historial.",
             )
 
-        return redirect("inicio")
+        return redirect("pagos_grupo", grupo_id=pago.grupo_id)
 
     return render(
         request,
