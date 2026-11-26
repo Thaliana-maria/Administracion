@@ -944,9 +944,10 @@ def responder_compra(request, compra_id):
         raise PermissionDenied("La compra es de solo lectura.")
     revision = get_object_or_404(RevisionCompra.objects.select_for_update(), compra=compra, usuario=request.user)
     accion = request.POST.get("accion")
-    if revision.estado == "pendiente" and accion in ("aceptada", "objetada"):
+    if revision.estado in ("pendiente", "objetada") and accion in ("aceptada", "objetada") and revision.estado != accion:
+        anterior = revision.estado
         revision.estado = accion
         revision.save(update_fields=["estado"])
-        registrar_cambio(request.user, compra, "revision", {"antes": "pendiente", "despues": accion})
+        registrar_cambio(request.user, compra, "revision", {"antes": anterior, "despues": accion})
         messages.success(request, "Tu revisión fue registrada.")
     return redirect("compra_detalle", compra_id=compra.pk)
