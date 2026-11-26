@@ -1,4 +1,7 @@
 from decimal import Decimal
+from uuid import uuid4
+from django.db import transaction
+from expenses.models import OperacionRegistro
 
 from django import forms
 from django.contrib import messages
@@ -283,7 +286,7 @@ def nueva_compra(request, grupo_id):
             ]
 
             try:
-                compra = registrar_compra(
+                compra = registrar_una_vez(request.user, grupo, formulario.cleaned_data["clave_operacion"], "compra", registrar_compra,
                     grupo=grupo,
                     pagador=formulario.cleaned_data["pagador"],
                     fecha=formulario.cleaned_data["fecha"],
@@ -309,7 +312,7 @@ def nueva_compra(request, grupo_id):
     else:
         formulario = CompraForm(
             miembros=miembros,
-            initial={"pagador": request.user},
+            initial={"pagador": request.user, "clave_operacion": uuid4()},
         )
 
         formset = ItemFormSet(
@@ -849,11 +852,11 @@ def pagos_grupo(request, grupo_id):
     grupo = _grupo_del_usuario(request, grupo_id)
     formulario = PagoForm(request.POST or None, miembros=_miembros(grupo),
         usuario=request.user, administrador=es_administrador(grupo, request.user),
-        initial={"deudor": request.user})
+        initial={"deudor": request.user, "clave_operacion": uuid4()})
     if request.method == "POST" and formulario.is_valid():
         datos = formulario.cleaned_data
         try:
-            registrar_pago_directo(request.user, grupo_id=grupo.pk,
+            registrar_una_vez(request.user, grupo, datos["clave_operacion"], "pago", registrar_pago_directo, request.user, grupo_id=grupo.pk,
                 deudor_id=datos["deudor"].pk, acreedor_id=datos["acreedor"].pk,
                 monto=datos["monto"], fecha=datos["fecha"])
         except ValidationError as error:
@@ -908,3 +911,19 @@ def archivar_grupo_vista(request, grupo_id):
     else:
         messages.success(request, "Grupo archivado. Puedes consultar su historial.")
     return redirect("grupo_detalle", grupo_id=grupo.pk)
+
+
+@transaction.atomic
+def registrar_una_vez(usuario, grupo, clave, tipo, servicio, *args, **datos):
+    operacion, creada = OperacionRegistro.objects.get_or_create(
+        clave=clave, defaults={"usuario": usuario, "grupo": grupo, "tipo": tipo}
+    )
+    if operacion.usuario_id != usuario.pk or operacion.grupo_id != grupo.pk or operacion.tipo != tipo:
+        raise ValidationError("La clave de operación no corresponde a este registro.")
+    if not creada:
+        modelo = Compra if tipo == "compra" else Pago
+        return modelo.objects.get(pk=operacion.registro_id, grupo=grupo)
+    registro = servicio(*args, **datos)
+    operacion.registro_id = registro.pk
+    operacion.save(update_fields=["registro_id"])
+    return registro
