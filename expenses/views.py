@@ -947,6 +947,9 @@ def responder_compra(request, compra_id):
         raise PermissionDenied("La compra es de solo lectura.")
     revision = get_object_or_404(RevisionCompra.objects.select_for_update(), compra=compra, usuario=request.user)
     accion = request.POST.get("accion")
+    if accion == "objetada" and compra.items.filter(asignaciones__obligacion__aplicaciones__anulada=False, asignaciones__obligacion__aplicaciones__pago__anulada=False, asignaciones__obligacion__aplicaciones__pago__estado="confirmado").exists():
+        messages.error(request, "La compra ya tiene pagos confirmados. Consulta el historial con el grupo.")
+        return redirect("compra_detalle", compra_id=compra.pk)
     if revision.estado in ("pendiente", "objetada") and accion in ("aceptada", "objetada") and revision.estado != accion:
         anterior = revision.estado
         revision.estado = accion
