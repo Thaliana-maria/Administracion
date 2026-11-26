@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from expenses.models import AjusteCompra, Asignacion, Compra
+from expenses.models import AjusteCompra, Asignacion, Compra, Grupo
 from ledger.models import Obligacion
 
 
@@ -52,7 +52,12 @@ def _distribuir_ajuste(compra, asignaciones):
 
 @transaction.atomic
 def recalcular_ajustes_compra(compra_id):
+    grupo_id = Compra.objects.values_list("grupo_id", flat=True).get(pk=compra_id)
+    Grupo.objects.select_for_update().get(pk=grupo_id)
     compra = Compra.objects.select_for_update().get(pk=compra_id)
+    from ledger.models import TramoCompensacion
+    if TramoCompensacion.objects.filter(obligacion__asignacion__item__compra=compra, compensacion__estado__in=["pendiente", "aprobada", "aplicada"]).exists():
+        raise ValidationError("No se pueden recalcular ajustes de una compra vinculada a una compensación.")
     asignaciones = list(
         Asignacion.objects.filter(
             item__compra=compra,
@@ -135,7 +140,7 @@ def recalcular_ajustes_compra(compra_id):
                 raise ValidationError("El descuento no puede eliminar una deuda existente.")
             if obligacion.monto != monto_nuevo:
                 if obligacion.aplicaciones.filter(
-                    anulada=False, pago__anulada=False
+                    anulada=False, pago__anulada=False, pago__estado__in=["pendiente", "confirmado"]
                 ).exists():
                     raise ValidationError(
                         "No se puede cambiar IVA, descuento o asignaciones "
@@ -143,6 +148,5 @@ def recalcular_ajustes_compra(compra_id):
                     )
                 obligacion.monto = monto_nuevo
                 obligacion.save(update_fields=["monto"])
-            restante -= parte
 
     return ajustes

@@ -1,4 +1,5 @@
-﻿{% load static %}
+﻿
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -17,15 +18,28 @@
             ¿Quién gastó esto?
         </a>
 
-        <nav class="side-nav">
+        <nav class="side-nav {% if grupo or compra.grupo or pago.grupo or item.compra.grupo %}nav-grupo{% endif %}" aria-label="Navegación principal">
+            {% if grupo or compra.grupo or pago.grupo or item.compra.grupo %}
+            {% firstof grupo.id compra.grupo_id pago.grupo_id item.compra.grupo_id as grupo_actual %}
+            <a class="{% if request.resolver_match.url_name == 'grupo_dashboard' %}active{% endif %}" href="{% url 'grupo_dashboard' grupo_actual %}">Resumen</a>
+            <a class="{% if request.resolver_match.url_name == 'compras_lista' or compra or item or request.resolver_match.url_name == 'compra_nueva' %}active{% endif %}" href="{% url 'compras_lista' grupo_actual %}">Compras</a>
+            <a class="{% if request.resolver_match.url_name == 'pagos_grupo' or request.resolver_match.url_name == 'compensaciones_grupo' or pago %}active{% endif %}" href="{% url 'pagos_grupo' grupo_actual %}">Pagos</a>
+            <a class="{% if request.resolver_match.url_name == 'grupo_detalle' or request.resolver_match.url_name == 'integrante_nuevo' or request.resolver_match.url_name == 'historial_grupo' %}active{% endif %}" href="{% url 'grupo_detalle' grupo_actual %}">Integrantes</a>
+            <a class="nav-secundaria {% if request.resolver_match.url_name == 'historial_grupo' %}active{% endif %}" href="{% url 'historial_grupo' grupo_actual %}">Cambios</a>
+            {% endif %}
             <a href="{% url 'inicio' %}"
-               class="{% if request.resolver_match.url_name == 'inicio' %}active{% endif %}">
+               class="nav-secundaria {% if request.resolver_match.url_name == 'inicio' %}active{% endif %}">
                 Inicio
             </a>
 
             <a href="{% url 'grupos' %}"
-               class="{% if request.resolver_match.url_name == 'grupos' %}active{% endif %}">
+               class="nav-secundaria {% if request.resolver_match.url_name == 'grupos' %}active{% endif %}">
                 Mis grupos
+            </a>
+
+            <a href="{% url 'perfil' %}"
+               class="nav-secundaria {% if request.resolver_match.url_name == 'perfil' or request.resolver_match.url_name == 'cambiar_contrasena' %}active{% endif %}">
+                Mi perfil
             </a>
         </nav>
 
@@ -65,6 +79,18 @@
     </main>
 {% endif %}
 
+{% if user.is_authenticated %}
+<dialog id="ventana-confirmacion" class="ventana-confirmacion" aria-labelledby="titulo-confirmacion">
+    <h2 id="titulo-confirmacion">Confirmar anulación</h2>
+    <p></p>
+    <form method="post" class="quick-links">
+        {% csrf_token %}
+        <button type="button" class="button outline" id="cancelar-confirmacion" autofocus>Cancelar</button>
+        <button type="submit" class="button danger" name="confirmar" value="si">Confirmar anulación</button>
+    </form>
+</dialog>
+<script src="{% static 'js/confirmaciones.js' %}" defer></script>
+{% endif %}
 {% block scripts %}{% endblock %}
 
 </body>

@@ -6,36 +6,46 @@
 {% block contenido_auth %}
 <section class="auth-screen register-screen">
     <div class="auth-brand">
-        <div class="brand-mark">QGE</div>
         <div class="brand-copy">
             <span class="auth-kicker">GASTOS COMPARTIDOS</span>
             <h1>¿Quién gastó esto?</h1>
             <p>
-                Organiza tus gastos compartidos, distribuye responsabilidades
-                y mantén las cuentas claras con tu grupo.
+                Crea tu cuenta con correo y contraseña. Tu contraseña se guarda cifrada.
             </p>
         </div>
     </div>
 
     <div class="auth-side">
-        <div class="auth-form">
-            <h2>Crear una cuenta</h2>
-            <p>Completa tus datos para comenzar.</p>
+        <div class="auth-form register-form">
+            <h2>Crear cuenta</h2>
 
             <form method="post">
                 {% csrf_token %}
 
-                {{ formulario.as_p }}
+                {% for campo in formulario.hidden_fields %}{{ campo }}{{ campo.errors }}{% endfor %}
+                {% if formulario.non_field_errors %}<div class="form-error" role="alert">{{ formulario.non_field_errors }}</div>{% endif %}
+                {% for campo in formulario.visible_fields %}
+                {% if campo.name == "aceptar_datos" %}
+                <label class="consent-line" for="{{ campo.id_for_label }}">{{ campo }}<span>{{ campo.label }}</span></label>
+                {% for error in campo.errors %}<span class="field-error" role="alert">{{ error }}</span>{% endfor %}
+                {% else %}
+                <div class="purchase-field">
+                    {{ campo.label_tag }}
+                    {{ campo }}
+                    {% if campo.name == "password1" %}<small class="help-text">La contraseña se almacena mediante un hash seguro.</small>{% endif %}
+                    {% for error in campo.errors %}<span class="field-error" role="alert">{{ error }}</span>{% endfor %}
+                </div>
+                {% endif %}
+                {% endfor %}
 
                 <button class="button primary" type="submit">
-                    Crear mi cuenta
+                    Crear cuenta
                 </button>
             </form>
 
-            <p>
-                ¿Ya tienes una cuenta?
-                <a href="{% url 'login' %}">Iniciar sesión</a>
-            </p>
+            <a class="button outline full" href="{% url 'login' %}">
+                Ya tengo cuenta
+            </a>
         </div>
     </div>
 </section>

@@ -39,6 +39,22 @@ class PruebasSimplificacion(SimpleTestCase):
             simplificar_deudas(1)
 
 
+    @patch("ledger.services.simplificacion.calcular_saldos")
+    def test_reutiliza_saldos_sin_consultarlos_de_nuevo(self, calcular):
+        saldos = {
+            1: Decimal("-10.00"),
+            2: Decimal("10.00"),
+        }
+
+        plan = simplificar_deudas(1, saldos=saldos)
+
+        calcular.assert_not_called()
+        self.assertEqual(
+            plan,
+            [{"deudor_id": 1, "acreedor_id": 2, "monto": Decimal("10.00")}],
+        )
+
+
 class PruebasCasoAceptacionCruceDeudas(TestCase):
     def test_cadena_a_b_c_se_sugiere_como_transferencia_a_c(self):
         persona_a = Usuario.objects.create_user(email="a@test.com", password="ClaveSegura123!")

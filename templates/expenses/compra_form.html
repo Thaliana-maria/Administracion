@@ -9,11 +9,11 @@
 <div class="page-heading">
     <div>
         <span class="breadcrumb">{{ grupo.nombre }}</span>
-        <h1>Registrar una compra</h1>
+        <h1 id="titulo-compra">Nueva compra</h1>
         <p>Registra quién pagó y distribuye los gastos entre los integrantes.</p>
     </div>
-    <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
-        Volver al grupo
+    <a class="button outline" href="{% url 'compras_lista' grupo.id %}">
+        Volver a compras
     </a>
 </div>
 
@@ -26,11 +26,15 @@
         </div>
     {% endif %}
 
-    <section class="panel feature-panel">
-        <h2>Información general</h2>
+    <p id="paso-compra" class="indicador-paso">Paso 1 de 2: datos de la compra</p>
+    <div class="distribucion-compra">
+    <div class="datos-compra">
+    <section class="panel feature-panel" id="datos-generales">
+        <h2>Datos de la compra</h2>
         <div class="feature-form">
-            {% for field in formulario %}
-                <div class="purchase-field">
+            {% for oculto in formulario.hidden_fields %}{{ oculto }}{{ oculto.errors }}{% endfor %}
+            {% for field in formulario.visible_fields %}
+                <div class="purchase-field" data-campo="{{ field.name }}">
                     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                     {{ field }}
                     {% if field.help_text %}
@@ -47,10 +51,10 @@
     <section class="panel feature-panel">
         <div class="section-heading">
             <div>
-                <h2>Detalle de los ítems</h2>
+                <h2 id="titulo-items">Ítems de la compra</h2>
                 <p>Agrega los productos o gastos que forman parte de la compra.</p>
             </div>
-            <span class="badge-count">5 espacios disponibles</span>
+            <button type="button" class="button outline" id="agregar-item">+ Agregar ítem</button>
         </div>
 
         {{ formset.management_form }}
@@ -65,15 +69,17 @@
             {% for f in formset %}
                 <fieldset class="purchase-item">
                     <legend>Ítem {{ forloop.counter }}</legend>
+                    <div class="resumen-item" hidden><strong></strong><span></span></div>
 
                     {% for hidden in f.hidden_fields %}
                         {{ hidden }}
                     {% endfor %}
 
                     {% for field in f.visible_fields %}
-                        <div class="purchase-field">
+                        <div class="purchase-field" data-campo="{{ field.name }}">
                             <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                             {{ field }}
+                            {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
                             {% for error in field.errors %}
                                 <span class="field-error">{{ error }}</span>
                             {% endfor %}
@@ -83,27 +89,56 @@
             {% endfor %}
         </div>
 
+        <template id="plantilla-item">
+            <fieldset class="purchase-item">
+                <legend>Ítem</legend>
+                    <div class="resumen-item" hidden><strong></strong><span></span></div>
+                {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+                {% for field in formset.empty_form.visible_fields %}
+                <div class="purchase-field" data-campo="{{ field.name }}">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                </div>
+                {% endfor %}
+            </fieldset>
+        </template>
         <p class="form-help">
             Si seleccionas «Una persona», debes elegir el integrante beneficiario.
         </p>
     </section>
 
+    </div>
+    <div class="verificacion-compra">
+    <section class="panel feature-panel" id="vista-reparto" hidden>
+        <h2>Distribución estimada por integrante</h2>
+        <p class="regla-reparto"><strong>Regla de redondeo RN-05.</strong> Los pesos sobrantes se asignan primero al pagador y luego por orden alfabético. La estimación incluye el IVA y el descuento proporcional. El servidor verifica el reparto definitivo al guardar.</p>
+        <div id="partes-compra" aria-live="polite"></div>
+    </section>
     <section class="panel feature-panel purchase-summary">
         <div>
-            <h2>Resumen de la compra</h2>
-            <p>El total se calcula sumando los valores de los ítems ingresados.</p>
+            <h2>Verificación</h2>
+            <p>El total corresponde a la suma de los ítems más el IVA, menos el descuento.</p>
         </div>
         <div class="live-total">
-            <span>Total estimado</span>
+            <div class="linea-verificacion"><span>Suma de ítems</span><span id="subtotal-compra">$ 0</span></div>
+            <div class="linea-verificacion"><span>IVA adicional</span><span id="iva-compra">$ 0</span></div>
+            <div class="linea-verificacion"><span>Descuento</span><span id="descuento-compra">$ 0</span></div>
+            <span>Total calculado</span>
             <strong id="purchase-total">$ 0</strong>
+            <p id="verificacion-total" aria-live="polite"></p>
         </div>
     </section>
 
-    <div class="quick-links">
-        <button type="submit" class="button primary">
+    </div>
+    </div>
+    <div class="quick-links acciones-compra">
+        <button type="button" class="button outline" id="paso-anterior" hidden>Anterior</button>
+        <button type="button" class="button primary" id="paso-siguiente" hidden>Siguiente: asignar</button>
+        <button type="submit" class="button primary" id="guardar-compra">
             Guardar compra
         </button>
-        <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
+        <a class="button outline" href="{% url 'compras_lista' grupo.id %}">
             Cancelar
         </a>
     </div>

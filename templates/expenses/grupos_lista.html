@@ -15,6 +15,7 @@
     </a>
 </div>
 
+<div class="detail-grid">
 <section class="groups-grid">
     {% for grupo in grupos %}
     <article class="panel group-entry">
@@ -26,7 +27,7 @@
         <div class="quick-links">
             <a class="button primary group-open"
                href="{% url 'grupo_dashboard' grupo.id %}">
-                Dashboard
+                Abrir grupo
             </a>
 
             <a class="button outline"
@@ -45,4 +46,13 @@
     </article>
     {% endfor %}
 </section>
+<section class="panel feature-panel">
+    <h2>Crear grupo</h2>
+    <form method="post" action="{% url 'grupo_nuevo' %}" class="feature-form">
+        {% csrf_token %}
+        {{ formulario.as_p }}
+        <button class="button primary" type="submit">Crear grupo</button>
+    </form>
+</section>
+</div>
 {% endblock %}

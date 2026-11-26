@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Compensaciones | {{ grupo.nombre }}{% endblock %}
+{% block contenido %}
+<div class="page-heading"><div><span class="breadcrumb">Pagos entre integrantes</span><h1>Compensaciones</h1></div><a class="button outline" href="{% url 'pagos_grupo' grupo.id %}">Volver a pagos</a></div>
+<section class="panel feature-panel pantalla-compensaciones">
+<h2>Solicitudes de compensación</h2>
+<p>Todos los participantes deben aceptar antes de que el acreedor confirme la recepción del dinero.</p>
+{% for solicitud in solicitudes %}
+<div class="tarjeta-compensacion">
+<h3>{{ solicitud.deudor.get_full_name|default:solicitud.deudor.email }} → {{ solicitud.acreedor.get_full_name|default:solicitud.acreedor.email }}</h3>
+<p class="resumen-compensacion"><strong>$ {{ solicitud.monto|floatformat:2 }}</strong><span class="estado-compensacion estado-{{ solicitud.estado }}">{{ solicitud.get_estado_display }}</span></p>
+<p>Solicitada: {{ solicitud.fecha|date:"d/m/Y H:i" }}</p>
+{% if solicitud.fecha_aplicacion %}<p>Aplicada: {{ solicitud.fecha_aplicacion|date:"d/m/Y H:i" }}</p>{% endif %}
+<h4>Obligaciones que se compensarán</h4>
+<div class="table-wrap"><table class="data-table tabla-compensacion"><thead><tr><th>Debe</th><th>Recibe</th><th>Valor</th></tr></thead><tbody>
+{% for tramo in solicitud.tramos.all %}<tr><td data-etiqueta="Debe">{{ tramo.obligacion.deudor.get_full_name|default:tramo.obligacion.deudor.email }}</td><td data-etiqueta="Recibe">{{ tramo.obligacion.acreedor.get_full_name|default:tramo.obligacion.acreedor.email }}</td><td data-etiqueta="Valor">$ {{ tramo.monto|floatformat:2 }}</td></tr>{% endfor %}
+</tbody></table></div>
+<h4>Aprobaciones</h4>
+<div class="table-wrap"><table class="data-table tabla-compensacion"><thead><tr><th>Integrante</th><th>Estado</th></tr></thead><tbody>
+{% for aprobacion in solicitud.aprobaciones.all %}
+<tr><td data-etiqueta="Integrante">{{ aprobacion.usuario.get_full_name|default:aprobacion.usuario.email }}</td><td data-etiqueta="Estado">{{ aprobacion.get_estado_display }}
+{% if not grupo.archivado and solicitud.estado == "pendiente" and aprobacion.usuario_id == user.id and aprobacion.estado == "pendiente" %}
+<form method="post" action="{% url 'responder_compensacion' grupo.id solicitud.id %}">{% csrf_token %}<button class="button primary" name="accion" value="aceptar">Aceptar</button><button class="button outline" name="accion" value="rechazar">Rechazar</button></form>
+{% endif %}</td></tr>
+{% endfor %}
+</tbody></table></div>
+{% if not grupo.archivado %}
+{% if solicitud.estado == "aprobada" and solicitud.acreedor_id == user.id %}
+<form method="post" action="{% url 'responder_compensacion' grupo.id solicitud.id %}">{% csrf_token %}<button class="button primary" name="accion" value="confirmar">Confirmar dinero recibido</button></form>
+{% endif %}
+{% if solicitud.estado == "pendiente" or solicitud.estado == "aprobada" %}
+{% if solicitud.solicitante_id == user.id %}
+<form method="post" action="{% url 'responder_compensacion' grupo.id solicitud.id %}">{% csrf_token %}<button class="button outline" name="accion" value="cancelar">Cancelar solicitud</button></form>
+{% else %}
+{% for aprobacion in solicitud.aprobaciones.all %}{% if aprobacion.usuario_id == user.id %}
+<form method="post" action="{% url 'responder_compensacion' grupo.id solicitud.id %}">{% csrf_token %}<button class="button outline" name="accion" value="cancelar">Cancelar solicitud</button></form>
+{% endif %}{% endfor %}
+{% endif %}
+{% endif %}
+{% endif %}
+</div>
+{% empty %}<p>No hay solicitudes de compensación.</p>{% endfor %}
+<div class="quick-links">{% if solicitudes.has_previous %}<a class="button outline" href="?pagina={{ solicitudes.previous_page_number }}">Anterior</a>{% endif %}<span>Página {{ solicitudes.number }} de {{ solicitudes.paginator.num_pages }}</span>{% if solicitudes.has_next %}<a class="button outline" href="?pagina={{ solicitudes.next_page_number }}">Siguiente</a>{% endif %}</div>
+</section>
+{% endblock %}

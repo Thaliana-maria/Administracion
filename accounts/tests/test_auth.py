@@ -1,20 +1,29 @@
 
 from django.test import TestCase
+from django.db import IntegrityError, transaction
+from django.core.cache import cache
 from django.urls import reverse
 from accounts.models import Usuario
 
 
 class PruebasUsuario(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
+
     def test_registro_de_usuario(self):
         respuesta = self.client.post(reverse("registro"), {
             "first_name": "Andres",
             "last_name": "Prueba",
             "email": "andres@example.com",
+            "aceptar_datos": "on",
             "password1": "ClaveSegura123!",
             "password2": "ClaveSegura123!",
         })
         self.assertEqual(respuesta.status_code, 302)
-        self.assertTrue(Usuario.objects.filter(email="andres@example.com").exists())
+        self.assertIsNotNone(Usuario.objects.get(email="andres@example.com").autorizacion_datos)
 
     def test_contrasena_se_guarda_con_hash(self):
         usuario = Usuario.objects.create_user(
@@ -42,6 +51,7 @@ class PruebasUsuario(TestCase):
             "first_name": "Otro",
             "last_name": "Usuario",
             "email": "duplicado@example.com",
+            "aceptar_datos": "on",
             "password1": "OtraClave123!",
             "password2": "OtraClave123!",
         })
@@ -55,6 +65,7 @@ class PruebasUsuario(TestCase):
             "first_name": "Andres",
             "last_name": "Prueba",
             "email": "diferente@example.com",
+            "aceptar_datos": "on",
             "password1": "ClaveSegura123!",
             "password2": "OtraClave123!",
         })
@@ -82,3 +93,30 @@ class PruebasUsuario(TestCase):
         respuesta = self.client.post(reverse("logout"))
         self.assertEqual(respuesta.status_code, 302)
         self.assertNotIn("_auth_user_id", self.client.session)
+
+
+    def test_rechaza_registro_sin_autorizacion(self):
+        respuesta = self.client.post(reverse("registro"), {
+            "first_name": "Usuario",
+            "last_name": "Prueba",
+            "email": "sinpermiso@example.com",
+            "password1": "ClaveSegura123!",
+            "password2": "ClaveSegura123!",
+        })
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertFalse(Usuario.objects.filter(email="sinpermiso@example.com").exists())
+
+    def test_correo_unico_sin_distincion_de_mayusculas(self):
+        Usuario.objects.create_user(email="unico@example.com", password="ClaveSegura123!")
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Usuario.objects.create(email="UNICO@example.com")
+        self.assertEqual(Usuario.objects.filter(email__iexact="unico@example.com").count(), 1)
+
+    def test_limite_de_intentos_de_acceso(self):
+        datos = {"username": "limite@example.com", "password": "Incorrecta123!"}
+        for intento in range(5):
+            respuesta = self.client.post(reverse("login"), datos)
+            self.assertEqual(respuesta.status_code, 200)
+        respuesta = self.client.post(reverse("login"), datos)
+        self.assertEqual(respuesta.status_code, 429)

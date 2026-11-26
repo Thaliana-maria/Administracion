@@ -5,6 +5,7 @@ from auditlog.models import RegistroAnulable
 
 
 class Grupo(models.Model):
+    archivado = models.BooleanField(default=False)
     nombre = models.CharField(max_length=100)
     creador = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -123,3 +124,20 @@ class AjusteCompra(models.Model):
                 name="un_ajuste_por_beneficiario_compra",
             )
         ]
+
+
+class OperacionRegistro(models.Model):
+    clave = models.UUIDField(unique=True)
+    tipo = models.CharField(max_length=10)
+    registro_id = models.PositiveIntegerField(null=True)
+    grupo = models.ForeignKey(Grupo, on_delete=models.PROTECT)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+
+
+class RevisionCompra(models.Model):
+    compra = models.ForeignKey(Compra, on_delete=models.PROTECT, related_name="revisiones")
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    estado = models.CharField(max_length=12, choices=[("pendiente", "Pendiente"), ("aceptada", "Aceptada"), ("objetada", "Objetada")], default="pendiente")
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["compra", "usuario"], name="una_revision_por_compra_usuario")]

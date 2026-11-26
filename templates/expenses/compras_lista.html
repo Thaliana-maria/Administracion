@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block titulo %}Compras | {{ grupo.nombre }}{% endblock %}
+
+{% block contenido %}
+<div class="page-heading cabecera-compras">
+    <div>
+        <span class="breadcrumb">{{ grupo.nombre }}</span>
+        <h1>Compras</h1>
+    </div>
+    {% if not grupo.archivado %}<a class="button primary" href="{% url 'compra_nueva' grupo.id %}">Nueva compra</a>{% else %}<span>Grupo archivado · Solo lectura</span>{% endif %}
+</div>
+<section class="panel feature-panel lista-compras-escritorio">
+    <div class="table-wrap">
+        <table class="data-table tabla-compras">
+            <thead>
+                <tr><th>Fecha</th><th>Descripción</th><th>Pagó</th><th>Total</th><th>Estado</th></tr>
+            </thead>
+            <tbody>
+                {% for compra in compras %}
+                <tr>
+                    <td data-etiqueta="Fecha">{{ compra.fecha|date:"d/m/Y" }}</td>
+                    <td data-etiqueta="Descripción"><a href="{% url 'compra_detalle' compra.id %}">{{ compra.descripcion|default:"Compra" }}</a></td>
+                    <td data-etiqueta="Pagó">{{ compra.pagador.get_full_name|default:compra.pagador.email }}</td>
+                    <td data-etiqueta="Total">$ {{ compra.total|floatformat:2 }}</td>
+                    <td data-etiqueta="Estado">{% if compra.anulada %}<span class="negative">Anulada</span>{% else %}<span class="positive">Activa</span>{% endif %}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5">No hay compras registradas.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="lista-compras-movil">
+        {% for compra in compras %}
+        <a class="tarjeta-compra" href="{% url 'compra_detalle' compra.id %}">
+            <div><strong>{{ compra.descripcion|default:"Compra" }}</strong><small>{{ compra.fecha|date:"d M" }} · pagó {{ compra.pagador.get_full_name|default:compra.pagador.email }}</small></div>
+            <div><span class="estado-compra {% if compra.anulada %}estado-anulada{% endif %}">{% if compra.anulada %}Anulada{% else %}Activa{% endif %}</span><strong>$ {{ compra.total|floatformat:"2g" }}</strong></div>
+        </a>
+        {% empty %}<p>No hay compras registradas.</p>{% endfor %}
+        <p class="form-help">Las compras anuladas no cuentan en los saldos.</p>
+        {% if not grupo.archivado %}<a class="button primary" href="{% url 'compra_nueva' grupo.id %}">Nueva compra</a>{% endif %}
+    </div>
+    {% if compras.has_other_pages %}
+    <div class="quick-links">
+        {% if compras.has_previous %}<a class="button outline" href="?pagina={{ compras.previous_page_number }}">Anterior</a>{% endif %}
+        <span>Página {{ compras.number }} de {{ compras.paginator.num_pages }}</span>
+        {% if compras.has_next %}<a class="button outline" href="?pagina={{ compras.next_page_number }}">Siguiente</a>{% endif %}
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

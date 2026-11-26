@@ -1,12 +1,13 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.db.models.functions import Lower
 
 
 class UsuarioManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
             raise ValueError("El correo es obligatorio")
-        email = self.normalize_email(email)
+        email = self.normalize_email(email).strip().lower()
         usuario = self.model(email=email, **extra_fields)
         usuario.set_password(password)
         usuario.save(using=self._db)
@@ -21,10 +22,14 @@ class UsuarioManager(BaseUserManager):
 class Usuario(AbstractUser):
     username = None
     email = models.EmailField(unique=True)
+    autorizacion_datos = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
     objects = UsuarioManager()
+
+    class Meta(AbstractUser.Meta):
+        constraints = [models.UniqueConstraint(Lower("email"), name="usuario_correo_unico_minusculas")]
 
     def __str__(self):
         return self.email

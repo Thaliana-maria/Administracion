@@ -124,7 +124,7 @@ class PruebasPermisosYRegistros(TestCase):
         self.compra.refresh_from_db()
         self.assertFalse(self.compra.anulada)
 
-    def test_anulacion_solicita_confirmacion_y_conserva_registros(self):
+    def test_anulacion_con_abonos_se_bloquea_y_conserva_registros(self):
         asignacion_pagador = self.item.asignaciones.get()
         asignacion_pagador.valor_asignado = 9000
         asignacion_pagador.save(update_fields=["valor_asignado"])
@@ -154,20 +154,20 @@ class PruebasPermisosYRegistros(TestCase):
         self.assertFalse(self.compra.anulada)
 
         respuesta = self.client.post(url, {"confirmar": "si"})
-        self.assertEqual(respuesta.status_code, 302)
+        self.assertEqual(respuesta.status_code, 400)
         self.compra.refresh_from_db()
         self.item.refresh_from_db()
         asignaciones = list(self.item.asignaciones.all())
         pago.refresh_from_db()
-        self.assertTrue(self.compra.anulada)
-        self.assertTrue(self.item.anulada)
-        self.assertTrue(all(asignacion.anulada for asignacion in asignaciones))
+        self.assertFalse(self.compra.anulada)
+        self.assertFalse(self.item.anulada)
+        self.assertTrue(all(not asignacion.anulada for asignacion in asignaciones))
         self.assertFalse(pago.anulada)
         aplicacion.refresh_from_db()
         self.assertFalse(aplicacion.anulada)
         self.assertEqual(asignaciones[0].valor_asignado + asignaciones[1].valor_asignado, 10000)
         self.assertTrue(
-            Historial.objects.filter(accion="anular_por_compra").count() >= 2
+            not Historial.objects.filter(accion="anular_por_compra").exists()
         )
         self.assertEqual(Decimal(self.compra.total), Decimal("10000"))
 
@@ -197,7 +197,7 @@ class PruebasPermisosYRegistros(TestCase):
             2,
         )
 
-    def test_interfaz_edita_pago_historico_y_guarda_historial(self):
+    def test_interfaz_edita_pago_pendiente_y_guarda_historial(self):
         pago = Pago.objects.create(
             grupo=self.grupo,
             deudor=self.pagador,
@@ -205,6 +205,7 @@ class PruebasPermisosYRegistros(TestCase):
             monto=1000,
             fecha=date.today(),
             registrado_por=self.pagador,
+            estado="pendiente",
         )
         self.client.force_login(self.pagador)
 
@@ -223,3 +224,137 @@ class PruebasPermisosYRegistros(TestCase):
                 accion="editar",
             ).exists()
         )
+
+
+    def test_edicion_integral_rechaza_version_desactualizada(self):
+        from expenses.services.registros import actualizar_items_compra, version_compra
+
+        version = version_compra(self.compra)
+        actualizar_compra(self.pagador, self.compra.pk, descripcion="Cambio previo")
+        with self.assertRaises(ValidationError):
+            actualizar_items_compra(
+                self.pagador, self.compra.pk,
+                {self.item.pk: {"descripcion": "Mercado", "valor": Decimal("10000"),
+                                "beneficiarios": [self.pagador]}},
+                version=version,
+            )
+        self.compra.refresh_from_db()
+        self.assertEqual(self.compra.descripcion, "Cambio previo")
+
+
+    def test_registro_repetido_devuelve_la_misma_compra(self):
+        from uuid import uuid4
+        from expenses.views import registrar_una_vez
+        from expenses.models import OperacionRegistro
+
+        clave = uuid4()
+        def crear():
+            return Compra.objects.create(grupo=self.grupo, pagador=self.pagador,
+                registrado_por=self.pagador, fecha=date.today(), total=10000)
+
+        primera = registrar_una_vez(self.pagador, self.grupo, clave, "compra", crear)
+        segunda = registrar_una_vez(self.pagador, self.grupo, clave, "compra", crear)
+        self.assertEqual(primera.pk, segunda.pk)
+        self.assertEqual(Compra.objects.filter(grupo=self.grupo).count(), 2)
+        self.assertEqual(OperacionRegistro.objects.filter(clave=clave).count(), 1)
+
+    def test_clave_de_operacion_no_se_comparte_entre_usuarios(self):
+        from uuid import uuid4
+        from expenses.views import registrar_una_vez
+
+        clave = uuid4()
+        registrar_una_vez(self.pagador, self.grupo, clave, "compra", lambda: self.compra)
+        with self.assertRaises(ValidationError):
+            registrar_una_vez(self.miembro, self.grupo, clave, "compra", lambda: self.compra)
+
+    def test_operacion_fallida_no_reserva_clave(self):
+        from uuid import uuid4
+        from expenses.views import registrar_una_vez
+        from expenses.models import OperacionRegistro
+
+        clave = uuid4()
+        def fallar():
+            raise ValidationError("Compra inválida")
+
+        with self.assertRaises(ValidationError):
+            registrar_una_vez(self.pagador, self.grupo, clave, "compra", fallar)
+        self.assertFalse(OperacionRegistro.objects.filter(clave=clave).exists())
+
+
+    def test_retiro_con_deuda_se_bloquea(self):
+        from expenses.services.permisos import retirar_integrante
+
+        asignacion = self.item.asignaciones.get()
+        asignacion.valor_asignado = 5000
+        asignacion.save(update_fields=["valor_asignado"])
+        Asignacion.objects.create(item=self.item, beneficiario=self.miembro, valor_asignado=5000)
+        with self.assertRaises(ValidationError):
+            retirar_integrante(self.admin, self.grupo.pk, self.miembro.pk)
+        self.assertTrue(Membresia.objects.get(grupo=self.grupo, usuario=self.miembro).activo)
+
+    def test_retiro_sin_deuda_conserva_membresia(self):
+        from expenses.services.permisos import retirar_integrante
+
+        membresia = retirar_integrante(self.admin, self.grupo.pk, self.miembro.pk)
+        self.assertFalse(membresia.activo)
+        self.assertTrue(Membresia.objects.filter(pk=membresia.pk).exists())
+
+    def test_archivado_conserva_compras_y_bloquea_edicion(self):
+        from expenses.services.permisos import archivar_grupo
+
+        grupo = archivar_grupo(self.admin, self.grupo.pk)
+        self.assertTrue(grupo.archivado)
+        self.assertTrue(Compra.objects.filter(pk=self.compra.pk, anulada=False).exists())
+        with self.assertRaises(PermissionDenied):
+            actualizar_compra(self.pagador, self.compra.pk, descripcion="Cambio posterior")
+
+    def test_solo_creador_puede_archivar_grupo(self):
+        from expenses.services.permisos import archivar_grupo
+
+        establecer_rol(self.admin, self.grupo.pk, self.miembro.pk, Membresia.Rol.ADMINISTRADOR)
+        with self.assertRaises(PermissionDenied):
+            archivar_grupo(self.miembro, self.grupo.pk)
+        self.grupo.refresh_from_db()
+        self.assertFalse(self.grupo.archivado)
+
+
+    def test_edicion_integral_agrega_item_y_recalcula_total(self):
+        from expenses.services.registros import actualizar_items_compra
+
+        actualizar_items_compra(
+            self.pagador, self.compra.pk,
+            {self.item.pk: {"descripcion": "Mercado", "valor": Decimal("10000"),
+                            "beneficiarios": [self.pagador]}},
+            nuevos=[{"descripcion": "Aseo", "valor": Decimal("5000"),
+                     "beneficiarios": [self.pagador, self.miembro]}],
+            impuesto=Decimal("1000"), descuento=Decimal("500"),
+        )
+        self.compra.refresh_from_db()
+        self.assertEqual(self.compra.total, Decimal("15500"))
+        self.assertEqual(self.compra.items.filter(anulada=False).count(), 2)
+        nuevo = self.compra.items.get(descripcion="Aseo")
+        self.assertEqual(sum(nuevo.asignaciones.values_list("valor_asignado", flat=True)), 5000)
+
+    def test_edicion_integral_no_permite_retirar_todos_los_items(self):
+        from expenses.services.registros import actualizar_items_compra
+
+        with self.assertRaises(ValidationError):
+            actualizar_items_compra(self.pagador, self.compra.pk,
+                                    {self.item.pk: {"retirar": True}})
+        self.item.refresh_from_db()
+        self.assertFalse(self.item.anulada)
+
+    def test_edicion_integral_revierte_cambios_con_beneficiario_externo(self):
+        from expenses.services.registros import actualizar_items_compra
+
+        with self.assertRaises(ValidationError):
+            actualizar_items_compra(
+                self.pagador, self.compra.pk,
+                {self.item.pk: {"descripcion": "Cambio inválido", "valor": Decimal("20000"),
+                                "beneficiarios": [self.externo]}},
+            )
+        self.compra.refresh_from_db()
+        self.item.refresh_from_db()
+        self.assertEqual(self.compra.total, Decimal("10000"))
+        self.assertEqual(self.item.descripcion, "Mercado")
+        self.assertEqual(self.item.asignaciones.filter(anulada=False).count(), 1)

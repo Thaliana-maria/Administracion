@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
@@ -11,15 +11,24 @@ from expenses.services.permisos import (
     exigir_miembro,
     exigir_puede_editar_pago,
 )
-from ledger.models import AplicacionPago, Obligacion, Pago
+from ledger.models import AplicacionPago, Obligacion, Pago, TramoCompensacion
+from expenses.models import Grupo
+
+
+def _validar_monto(monto):
+    try:
+        valor = Decimal(str(monto))
+        if not valor.is_finite() or valor <= 0 or valor > Decimal("9999999999.99") or valor != valor.quantize(Decimal("0.01")):
+            raise ValidationError("El monto debe ser positivo, válido y tener máximo dos decimales.")
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValidationError("El monto indicado no es válido.")
+    return valor
 
 
 def _normalizar_aplicaciones(aplicaciones):
     normalizadas = []
     for obligacion_id, monto in aplicaciones:
-        valor = Decimal(str(monto))
-        if valor <= 0 or valor != valor.quantize(Decimal("0.01")):
-            raise ValidationError("Cada abono debe ser positivo y tener máximo dos decimales.")
+        valor = _validar_monto(monto)
         normalizadas.append((int(obligacion_id), valor))
     if len({obligacion_id for obligacion_id, _ in normalizadas}) != len(normalizadas):
         raise ValidationError("Una obligación no puede repetirse en el mismo pago.")
@@ -42,14 +51,15 @@ def _validar_aplicaciones(
         raise ValidationError("La suma de los abonos debe coincidir con el monto del pago.")
 
     aplicaciones_validadas = []
-    for obligacion_id, valor in normalizadas:
+    for obligacion_id, valor in sorted(normalizadas):
         obligacion = (
             Obligacion.objects.select_for_update()
             .select_related("asignacion__item__compra")
-            .get(pk=obligacion_id)
+            .filter(pk=obligacion_id, grupo_id=grupo_id).first()
         )
         if (
-            obligacion.grupo_id != grupo_id
+            obligacion is None
+            or obligacion.grupo_id != grupo_id
             or obligacion.deudor_id != deudor_id
             or obligacion.acreedor_id != acreedor_id
             or obligacion.anulada
@@ -59,15 +69,21 @@ def _validar_aplicaciones(
         ):
             raise ValidationError("El abono no corresponde a una obligación activa de este pago.")
 
+        if obligacion.asignacion.item.compra.revisiones.filter(estado="objetada").exists():
+            raise ValidationError("La compra tiene una objeción sin resolver.")
+
         pagos_aplicados = AplicacionPago.objects.filter(
             obligacion=obligacion,
             anulada=False,
             pago__anulada=False,
-        )
+        ).exclude(pago__estado="rechazado")
         if excluir_pago_id is not None:
             pagos_aplicados = pagos_aplicados.exclude(pago_id=excluir_pago_id)
         monto_aplicado = pagos_aplicados.aggregate(total=Sum("monto"))["total"] or Decimal("0.00")
-        if monto_aplicado + valor > obligacion.monto:
+        reservado_compensacion = TramoCompensacion.objects.filter(
+            obligacion=obligacion, compensacion__estado__in=["pendiente", "aprobada", "aplicada"]
+        ).aggregate(total=Sum("monto"))["total"] or Decimal("0.00")
+        if monto_aplicado + reservado_compensacion + valor > obligacion.monto:
             raise ValidationError("El abono supera el saldo pendiente de la obligación.")
         aplicaciones_validadas.append((obligacion, valor))
     return aplicaciones_validadas
@@ -96,14 +112,20 @@ def registrar_pago(
     monto,
     fecha,
     aplicaciones,
+    estado="confirmado",
 ):
+    grupo = Grupo.objects.select_for_update().get(pk=grupo_id)
+    if grupo.archivado:
+        raise ValidationError("El grupo está archivado.")
     exigir_miembro(grupo_id, usuario)
     if not es_administrador(grupo_id, usuario) and usuario.pk != deudor_id:
         raise PermissionDenied("Un miembro solo puede registrar sus propios pagos.")
 
-    monto = Decimal(str(monto))
-    if monto <= 0 or monto != monto.quantize(Decimal("0.01")):
-        raise ValidationError("El monto debe ser positivo y tener máximo dos decimales.")
+    if estado not in ("pendiente", "confirmado"):
+        raise ValidationError("Estado inicial del pago no válido.")
+    monto = _validar_monto(monto)
+    if deudor_id == acreedor_id:
+        raise ValidationError("El deudor y el acreedor deben ser personas distintas.")
     aplicaciones_validadas = _validar_aplicaciones(
         grupo_id=grupo_id,
         deudor_id=deudor_id,
@@ -118,6 +140,7 @@ def registrar_pago(
         monto=monto,
         fecha=fecha,
         registrado_por=usuario,
+        estado=estado,
     )
     _registrar_aplicaciones(pago, aplicaciones_validadas)
     registrar_cambio(
@@ -148,14 +171,16 @@ def actualizar_pago(
     deudor_id=None,
     acreedor_id=None,
 ):
+    grupo_id = Pago.objects.values_list("grupo_id", flat=True).get(pk=pago_id)
+    Grupo.objects.select_for_update().get(pk=grupo_id)
     pago = Pago.objects.select_for_update().get(pk=pago_id)
     exigir_puede_editar_pago(pago, usuario)
     if pago.anulada:
         raise ValidationError("No se puede editar un pago anulado.")
+    if pago.estado != "pendiente":
+        raise ValidationError("Solo se pueden editar pagos pendientes.")
 
-    monto = Decimal(str(monto))
-    if monto <= 0 or monto != monto.quantize(Decimal("0.01")):
-        raise ValidationError("El monto debe ser positivo y tener máximo dos decimales.")
+    monto = _validar_monto(monto)
     deudor_id = pago.deudor_id if deudor_id is None else int(deudor_id)
     acreedor_id = pago.acreedor_id if acreedor_id is None else int(acreedor_id)
     if deudor_id == acreedor_id:
@@ -225,11 +250,20 @@ def actualizar_pago(
 
 @transaction.atomic
 def anular_pago(usuario, pago_id):
+    grupo_id = Pago.objects.values_list("grupo_id", flat=True).get(pk=pago_id)
+    Grupo.objects.select_for_update().get(pk=grupo_id)
     pago = Pago.objects.select_for_update().get(pk=pago_id)
-    exigir_puede_editar_pago(pago, usuario)
+    if Grupo.objects.filter(pk=pago.grupo_id, archivado=True).exists():
+        raise ValidationError("El grupo está archivado.")
+    if pago.estado == "confirmado" and usuario.pk == pago.acreedor_id:
+        exigir_miembro(pago.grupo_id, usuario)
+    else:
+        exigir_puede_editar_pago(pago, usuario)
     if pago.anulada:
         raise ValidationError("El pago ya está anulado.")
 
+    if pago.estado == "confirmado" and usuario.pk != pago.acreedor_id:
+        raise PermissionDenied("Solo el acreedor puede anular un pago confirmado.")
     detalles = {
         "monto": str(pago.monto),
         "deudor_id": pago.deudor_id,
@@ -244,4 +278,72 @@ def anular_pago(usuario, pago_id):
     pago.anulada_por = usuario
     pago.save(update_fields=["anulada", "anulada_en", "anulada_por"])
     registrar_cambio(usuario, pago, "anular", detalles)
+    return pago
+
+
+@transaction.atomic
+def registrar_pago_directo(usuario, *, grupo_id, deudor_id, acreedor_id, monto, fecha):
+    grupo = Grupo.objects.select_for_update().get(pk=grupo_id)
+    if grupo.archivado:
+        raise ValidationError("El grupo está archivado.")
+    exigir_miembro(grupo_id, usuario)
+    if not es_administrador(grupo_id, usuario) and usuario.pk != deudor_id:
+        raise PermissionDenied("Un miembro solo puede registrar sus propios pagos.")
+    monto = _validar_monto(monto)
+    if deudor_id == acreedor_id:
+        raise ValidationError("El deudor y el acreedor deben ser personas distintas.")
+    restante = monto
+    aplicaciones = []
+    obligaciones = Obligacion.objects.select_for_update().filter(
+        grupo_id=grupo_id, deudor_id=deudor_id, acreedor_id=acreedor_id,
+        anulada=False, asignacion__anulada=False,
+        asignacion__item__anulada=False, asignacion__item__compra__anulada=False,
+    ).exclude(asignacion__item__compra__revisiones__estado="objetada").order_by("pk")
+    obligaciones = list(obligaciones)
+    reservas = {
+        fila["obligacion_id"]: fila["total"]
+        for fila in AplicacionPago.objects.filter(
+            obligacion_id__in=[obligacion.pk for obligacion in obligaciones],
+            anulada=False, pago__anulada=False,
+            pago__estado__in=["pendiente", "confirmado"],
+        ).values("obligacion_id").annotate(total=Sum("monto"))
+    }
+    for identificador, total in TramoCompensacion.objects.filter(
+        obligacion_id__in=[obligacion.pk for obligacion in obligaciones],
+        compensacion__estado__in=["pendiente", "aprobada", "aplicada"],
+    ).values("obligacion_id").annotate(total=Sum("monto")).values_list("obligacion_id", "total"):
+        reservas[identificador] = reservas.get(identificador, Decimal("0.00")) + total
+    for obligacion in obligaciones:
+        reservado = reservas.get(obligacion.pk, Decimal("0.00"))
+        abono = min(restante, obligacion.monto - reservado)
+        if abono > 0:
+            aplicaciones.append((obligacion.pk, abono))
+            restante -= abono
+        if restante == 0:
+            break
+    if restante:
+        raise ValidationError("El valor supera la deuda directa pendiente entre estas personas.")
+    return registrar_pago(usuario, grupo_id=grupo_id, deudor_id=deudor_id,
+        acreedor_id=acreedor_id, monto=monto, fecha=fecha, aplicaciones=aplicaciones, estado="pendiente")
+
+
+@transaction.atomic
+def responder_pago(usuario, grupo_id, pago_id, confirmar):
+    grupo = Grupo.objects.select_for_update().get(pk=grupo_id)
+    if grupo.archivado:
+        raise ValidationError("El grupo está archivado.")
+    exigir_miembro(grupo_id, usuario)
+    pago = Pago.objects.select_for_update().filter(pk=pago_id, grupo_id=grupo_id).first()
+    if pago is None or pago.acreedor_id != usuario.pk:
+        raise PermissionDenied("Solo quien recibe el pago puede responderlo.")
+    if pago.anulada or pago.estado != "pendiente":
+        raise ValidationError("El pago ya fue resuelto.")
+    if confirmar:
+        aplicaciones = list(pago.aplicaciones.filter(anulada=False).values_list("obligacion_id", "monto"))
+        _validar_aplicaciones(grupo_id=grupo_id, deudor_id=pago.deudor_id,
+            acreedor_id=pago.acreedor_id, monto=pago.monto,
+            aplicaciones=aplicaciones, excluir_pago_id=pago.pk)
+    pago.estado = "confirmado" if confirmar else "rechazado"
+    pago.save(update_fields=["estado"])
+    registrar_cambio(usuario, pago, pago.estado, {"antes": "pendiente", "despues": pago.estado})
     return pago

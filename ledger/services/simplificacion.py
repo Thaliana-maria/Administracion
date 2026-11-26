@@ -1,14 +1,22 @@
 from decimal import Decimal
 from functools import lru_cache
+from collections import deque
 
 from ledger.services.saldos import calcular_saldos
+from django.db.models import Q, Sum, OuterRef, Subquery
+from ledger.models import Obligacion, TramoCompensacion
 
 
-def simplificar_deudas(grupo):
-    """Calcula una liquidación con el menor número de transferencias."""
-    saldos = calcular_saldos(grupo)
+def simplificar_deudas(grupo, *, saldos=None):
+    """Calcula transferencias sugeridas; para grupos grandes utiliza una aproximación."""
+    if saldos is None:
+        saldos = calcular_saldos(grupo)
+    for saldo in saldos.values():
+        valor = Decimal(str(saldo))
+        if not valor.is_finite() or valor != valor.quantize(Decimal("0.01")):
+            raise ValueError("Los saldos deben ser finitos y tener máximo dos decimales.")
     centavos = tuple(
-        (usuario_id, int(saldo * 100))
+        (usuario_id, int(Decimal(str(saldo)) * 100))
         for usuario_id, saldo in sorted(saldos.items())
         if saldo
     )
@@ -54,11 +62,73 @@ def simplificar_deudas(grupo):
                 break
         return mejor or ()
 
+    if len(centavos) > 10:
+        deudores = [[usuario, -saldo] for usuario, saldo in centavos if saldo < 0]
+        acreedores = [[usuario, saldo] for usuario, saldo in centavos if saldo > 0]
+        plan = []
+        i = j = 0
+        while i < len(deudores) and j < len(acreedores):
+            monto = min(deudores[i][1], acreedores[j][1])
+            plan.append((deudores[i][0], acreedores[j][0], monto))
+            deudores[i][1] -= monto
+            acreedores[j][1] -= monto
+            if not deudores[i][1]:
+                i += 1
+            if not acreedores[j][1]:
+                j += 1
+    else:
+        plan = resolver(centavos)
+
     return [
         {
             "deudor_id": deudor_id,
             "acreedor_id": acreedor_id,
             "monto": Decimal(monto_centavos) / Decimal("100"),
         }
-        for deudor_id, acreedor_id, monto_centavos in resolver(centavos)
+        for deudor_id, acreedor_id, monto_centavos in plan
     ]
+
+
+def transferencias_disponibles(grupo):
+    reservas = TramoCompensacion.objects.filter(obligacion_id=OuterRef('pk'), compensacion__estado__in=['pendiente', 'aprobada', 'aplicada']).order_by().values('obligacion_id').annotate(total=Sum('monto')).values('total')
+    obligaciones = Obligacion.objects.filter(
+        grupo=grupo, anulada=False, asignacion__anulada=False,
+        asignacion__item__anulada=False, asignacion__item__compra__anulada=False,
+    ).exclude(asignacion__item__compra__revisiones__estado="objetada").annotate(
+        reservado=Sum("aplicaciones__monto", filter=Q(
+            aplicaciones__anulada=False, aplicaciones__pago__anulada=False,
+            aplicaciones__pago__estado__in=["pendiente", "confirmado"]
+        )), reservado_compensacion=Subquery(reservas)
+    )
+    montos = {}
+    for deudor_id, acreedor_id, monto, reservado, compensacion in obligaciones.values_list("deudor_id", "acreedor_id", "monto", "reservado", "reservado_compensacion").iterator():
+        pendiente = monto - (reservado or Decimal("0")) - (compensacion or Decimal("0"))
+        if pendiente > 0:
+            clave = (deudor_id, acreedor_id)
+            montos[clave] = montos.get(clave, Decimal("0")) + pendiente
+    return [{"deudor_id": deudor, "acreedor_id": acreedor, "monto": monto}
+            for (deudor, acreedor), monto in sorted(montos.items())]
+
+
+def buscar_cadena(disponibles, deudor_id, acreedor_id, monto):
+    if deudor_id == acreedor_id or not monto.is_finite() or monto <= 0:
+        return []
+    conexiones = {}
+    for deuda in disponibles:
+        if deuda["monto"] >= monto:
+            conexiones.setdefault(deuda["deudor_id"], []).append(deuda["acreedor_id"])
+    pendientes = deque([deudor_id])
+    anteriores = {deudor_id: None}
+    while pendientes:
+        persona = pendientes.popleft()
+        if persona == acreedor_id:
+            cadena = []
+            while persona is not None:
+                cadena.append(persona)
+                persona = anteriores[persona]
+            return list(reversed(cadena))
+        for siguiente in sorted(conexiones.get(persona, [])):
+            if siguiente not in anteriores:
+                anteriores[siguiente] = persona
+                pendientes.append(siguiente)
+    return []

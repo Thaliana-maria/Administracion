@@ -149,7 +149,7 @@ class PruebasSaldos(TestCase):
                 usuario=usuario
             )
 
-        with self.assertNumQueries(6):
+        with self.assertNumQueries(8):
             saldos = calcular_saldos(grupo)
 
         self.assertEqual(len(saldos), 10)

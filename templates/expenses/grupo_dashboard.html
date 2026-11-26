@@ -1,54 +1,168 @@
-﻿{% extends "base.html" %}
+﻿
+{% extends "base.html" %}
 
-{% block titulo %}Dashboard | {{ grupo.nombre }}{% endblock %}
+{% block titulo %}Resumen | {{ grupo.nombre }}{% endblock %}
 
 {% block contenido %}
 <div class="page-heading">
     <div>
-        <span class="breadcrumb">{{ grupo.nombre }}</span>
-        <h1>Dashboard del grupo</h1>
-        <p>Resumen general de actividad y movimientos.</p>
+        <span class="breadcrumb">Resumen de saldos</span>
+        <h1>{{ grupo.nombre }}</h1>
     </div>
-    <a class="button primary" href="{% url 'compra_nueva' grupo.id %}">
-        Registrar compra
-    </a>
+
+    {% if not grupo.archivado %}<a class="button primary" href="{% url 'compra_nueva' grupo.id %}">Nueva compra</a>{% endif %}
 </div>
 
-<section class="stats-grid">
-    <article class="panel stat">
-        <small>Gastos del grupo</small>
-        <strong>$ {{ total_gastos|floatformat:2 }}</strong>
-        <span>Total de compras activas</span>
-    </article>
+<div class="detail-grid resumen-financiero">
+<section class="panel feature-panel">
+    <div class="section-heading">
+        <div>
+            <h2>Saldos</h2>
+            
+        </div>
+    </div>
 
-    <article class="panel stat">
-        <small>Ítems registrados</small>
-        <strong>{{ cantidad_items }}</strong>
-        <span>Ítems no anulados</span>
-    </article>
+    <div class="table-wrap">
+        <table class="data-table tabla-saldos">
+            <thead>
+                <tr>
+                    <th>Integrante</th>
+                    <th>Saldo</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
 
-    <article class="panel stat">
-        <small>Pagos realizados</small>
-        <strong>{{ cantidad_pagos }}</strong>
-        <span>$ {{ total_pagos|floatformat:2 }} en pagos</span>
-    </article>
-
-    <article class="panel stat">
-        <small>Integrantes activos</small>
-        <strong>{{ cantidad_integrantes }}</strong>
-        <span>Miembros del grupo</span>
-    </article>
+            <tbody>
+                {% for usuario, saldo, porcentaje in barras_saldos %}
+                <tr>
+                    <td>
+                        {{ usuario.get_full_name|default:usuario.email }}
+                        <div class="barra-saldo"><span class="{% if saldo < 0 %}barra-negativa{% endif %}" style="width: {{ porcentaje }}%"></span></div>
+                    </td>
+                    <td class="{% if saldo > 0 %}positive{% elif saldo < 0 %}negative{% endif %}">{% if saldo > 0 %}+{% endif %}{{ saldo|floatformat:"2g" }} COP</td>
+                    <td>
+                        {% if saldo > 0 %}
+                            <span class="estado-saldo favor">A favor</span>
+                        {% elif saldo < 0 %}
+                            <span class="estado-saldo debe">Debe</span>
+                        {% else %}
+                            <span class="estado-saldo">Equilibrado</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3">
+                        No hay integrantes activos.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="form-help">La suma de los saldos debe ser $0.</p>
 </section>
 
 <section class="panel feature-panel">
     <div class="section-heading">
         <div>
-            <h2>Últimas compras</h2>
+            <h2>Transferencias sugeridas</h2>
+            <p>
+                Propuesta de transferencias para equilibrar los saldos
+                con menos movimientos. En grupos grandes se usa una aproximación.
+            </p>
+        </div>
+    </div>
+
+    <p>
+        Estas transferencias son recomendaciones. No registran pagos,
+        no modifican obligaciones y no cambian los saldos del grupo.
+    </p>
+
+    <a class="button outline" href="{% url 'compensaciones_grupo' grupo.id %}">Ver compensaciones</a>
+    {% if error_simplificacion %}
+        <p class="message error">
+            No fue posible calcular las transferencias:
+            {{ error_simplificacion }}
+        </p>
+    {% elif transferencias_sugeridas %}
+        <div class="table-wrap">
+            <table class="data-table tabla-transferencias">
+                <thead>
+                    <tr>
+                        <th>Deudor</th>
+                        <th>Acreedor</th>
+                        <th>Transferencia sugerida</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for transferencia in transferencias_sugeridas %}
+                    <tr>
+                        <td>
+                            {{ transferencia.deudor.get_full_name|default:transferencia.deudor.email }}
+                        </td>
+                        <td>
+                            {{ transferencia.acreedor.get_full_name|default:transferencia.acreedor.email }}
+                        </td>
+                        <td>
+                            $ {{ transferencia.monto|floatformat:2 }}
+                            {% if not grupo.archivado %}{% if transferencia.registrable and user.id == transferencia.deudor.id or transferencia.registrable and puede_gestionar %}
+                            <a class="button outline" href="{% url 'pagos_grupo' grupo.id %}?deudor={{ transferencia.deudor.id }}&amp;acreedor={{ transferencia.acreedor.id }}&amp;monto={{ transferencia.monto|stringformat:'f' }}">Registrar pago</a>
+                            {% elif transferencia.compensable and user.id == transferencia.deudor.id or transferencia.compensable and puede_gestionar %}
+                            <form method="post" action="{% url 'solicitar_compensacion' grupo.id %}">{% csrf_token %}
+                                <input type="hidden" name="deudor" value="{{ transferencia.deudor.id }}">
+                                <input type="hidden" name="acreedor" value="{{ transferencia.acreedor.id }}">
+                                <input type="hidden" name="monto" value="{{ transferencia.monto|stringformat:'f' }}">
+                                <input type="hidden" name="clave" value="{{ transferencia.clave }}">
+                                <button class="button outline" type="submit">Solicitar compensación</button>
+                            </form>
+                            <small>Requiere la aprobación de todos los participantes.</small>
+                            {% elif not transferencia.registrable %}<small>Consulta los pagos directos disponibles o las solicitudes existentes.</small>{% endif %}{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>
+            Los saldos del grupo están equilibrados.
+            No se necesitan transferencias sugeridas.
+        </p>
+    {% endif %}
+</section>
+
+</div>
+<section class="panel feature-panel">
+    <h2>Pagos directos disponibles</h2>
+    <p>Alternativas de pago sobre obligaciones reales, descontando abonos y reservas de compensación. No necesitas realizar una transferencia indirecta para resolver tus deudas.</p>
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead><tr><th>Deudor</th><th>Acreedor</th><th>Valor disponible</th><th>Acción</th></tr></thead>
+            <tbody>
+            {% for pago in pagos_disponibles %}
+                <tr>
+                    <td>{{ pago.deudor.get_full_name|default:pago.deudor.email }}</td>
+                    <td>{{ pago.acreedor.get_full_name|default:pago.acreedor.email }}</td>
+                    <td>$ {{ pago.monto|floatformat:2 }}</td>
+                    <td>{% if not grupo.archivado %}{% if user.id == pago.deudor.id or puede_gestionar %}
+                        <a class="button outline" href="{% url 'pagos_grupo' grupo.id %}?deudor={{ pago.deudor.id }}&amp;acreedor={{ pago.acreedor.id }}&amp;monto={{ pago.monto|stringformat:'f' }}">Registrar pago</a>
+                    {% endif %}{% endif %}</td>
+                </tr>
+            {% empty %}<tr><td colspan="4">No hay pagos directos disponibles.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+<section class="panel feature-panel">
+    <div class="section-heading">
+        <div>
+            <h2>Últimos movimientos</h2>
             <p>Movimientos recientes del grupo.</p>
         </div>
-        <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
-            Ver grupo
-        </a>
+
+        <a class="button outline" href="{% url 'historial_grupo' grupo.id %}">Ver cambios</a>
     </div>
 
     <div class="table-wrap">
@@ -57,81 +171,27 @@
                 <tr>
                     <th>Descripción</th>
                     <th>Fecha</th>
-                    <th>Pagador</th>
+                    <th>Pagó</th>
                     <th>Valor</th>
                 </tr>
             </thead>
-            <tbody>
-                {% for compra in ultimas_compras %}
-                <tr>
-                    <td>
-                        <a href="{% url 'compra_detalle' compra.id %}">
-                            {{ compra.descripcion|default:"Compra" }}
-                        </a>
-                    </td>
-                    <td>{{ compra.fecha|date:"d/m/Y" }}</td>
-                    <td>{{ compra.pagador.get_full_name|default:compra.pagador.email }}</td>
-                    <td>$ {{ compra.total|floatformat:2 }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="4">Todavía no hay compras registradas.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</section>
 
-<section class="panel feature-panel">
-    <div class="section-heading">
-        <div>
-            <h2>Saldos de los integrantes</h2>
-            <p>Estado financiero calculado con los movimientos activos.</p>
-        </div>
-    </div>
-
-    <div class="table-wrap">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>Integrante</th>
-                    <th>Saldo</th>
-                    <th>Estado</th>
-                </tr>
-            </thead>
             <tbody>
-                {% for usuario, saldo in filas_saldos %}
-                <tr>
-                    <td>{{ usuario.get_full_name|default:usuario.email }}</td>
-                    <td>$ {{ saldo|floatformat:2 }}</td>
-                    <td>
-                        {% if saldo > 0 %}
-                            A favor
-                        {% elif saldo < 0 %}
-                            Pendiente
-                        {% else %}
-                            Equilibrado
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="3">No hay integrantes activos.</td>
-                </tr>
-                {% endfor %}
+                {% for movimiento in movimientos %}
+                <tr><td>{% if movimiento.compra_id %}<a href="{% url 'compra_detalle' movimiento.compra_id %}">{{ movimiento.descripcion }}</a>{% elif movimiento.compensacion_id %}<a href="{% url 'compensaciones_grupo' grupo.id %}">{{ movimiento.descripcion }}</a>{% else %}<a href="{% url 'pagos_grupo' grupo.id %}">{{ movimiento.descripcion }}</a>{% endif %}<small class="tipo-movimiento">{{ movimiento.tipo }}</small></td><td>{{ movimiento.fecha|date:"d/m/Y" }}</td><td>{{ movimiento.persona.get_full_name|default:movimiento.persona.email }}</td><td>$ {{ movimiento.valor|floatformat:2 }}</td></tr>
+                {% empty %}<tr><td colspan="4">Todavía no hay movimientos registrados.</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>
 </section>
 
 <div class="quick-links">
-    <a class="button primary" href="{% url 'compra_nueva' grupo.id %}">
-        Registrar una compra
-    </a>
+
+
     <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
-        Ver detalles del grupo
+        Ver integrantes
     </a>
+
     <a class="button outline" href="{% url 'grupos' %}">
         Volver a mis grupos
     </a>
