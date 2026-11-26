@@ -3,6 +3,7 @@
 from expenses import views
 
 urlpatterns = [
+    path("compras/<int:compra_id>/responder/", views.responder_compra, name="responder_compra"),
     path("grupos/<int:grupo_id>/archivar/", views.archivar_grupo_vista, name="archivar_grupo"),
     path("grupos/<int:grupo_id>/integrantes/<int:miembro_id>/retirar/", views.retirar_integrante_vista, name="retirar_integrante"),
     path("grupos/<int:grupo_id>/pagos/<int:pago_id>/responder/", views.responder_pago_vista, name="responder_pago"),
