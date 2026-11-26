@@ -22,7 +22,7 @@
 {% empty %}<tr><td colspan="5">No hay integrantes registrados.</td></tr>{% endfor %}
 </tbody></table></div>
 {% if puede_gestionar and not grupo.archivado %}
-<form class="incorporar-integrante" method="post" action="{% url 'integrante_nuevo' grupo.id %}">{% csrf_token %}<div><label for="correo-integrante">Incorporar integrante (correo)</label><input id="correo-integrante" name="email" type="email" placeholder="nombre@correo.com" required></div><button class="button primary">Incorporar</button></form>
+<form class="incorporar-integrante" method="post" action="{% url 'integrante_nuevo' grupo.id %}">{% csrf_token %}<div><label for="correo-integrante">Incorporar integrante (correo)</label><input id="correo-integrante" name="email" type="email" placeholder="nombre@correo.com" required></div><div><label for="rol-integrante">Rol</label><select id="rol-integrante" name="rol"><option value="miembro">Miembro</option><option value="administrador">Administrador</option></select></div><button class="button primary">Incorporar</button></form>
 {% endif %}
 </section>
 <section class="panel permissions-panel"><h2>Permisos por rol</h2>
