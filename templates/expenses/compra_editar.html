@@ -1,13 +1,14 @@
 
 {% extends "base.html" %}
+{% load static %}
 
 {% block titulo %}Editar compra #{{ compra.pk }}{% endblock %}
 
 {% block contenido %}
 <div class="page-heading">
     <div>
-        <span class="breadcrumb">Edición de compra</span>
-        <h1>Editar compra #{{ compra.pk }}</h1>
+        <span class="breadcrumb">Editando compra del {{ compra.fecha|date:"d M" }}</span>
+        <h1>Editar compra</h1>
         <p>Actualiza los datos, el IVA y el descuento. Puedes corregir los ítems desde esta misma pantalla.</p>
     </div>
     <a class="button outline" href="{% url 'compra_detalle' compra.pk %}">
@@ -15,12 +16,14 @@
     </a>
 </div>
 
-<form method="post" class="feature-form">
+<form method="post" id="edicion-compra" class="purchase-form">
+    <p id="paso-edicion" class="indicador-paso">Datos y asignación de la compra</p>
+    <div class="distribucion-compra"><div class="datos-compra">
     {% csrf_token %}
     <input type="hidden" name="version_compra" value="{{ version_compra }}">
-<section class="panel feature-panel edit-panel">
+<section class="panel feature-panel edit-panel" id="datos-edicion">
     <h2>Información de la compra</h2>
-    <p>Subtotal de ítems: $ {{ subtotal|floatformat:2 }}</p>
+    
     <p>Las compras con pagos pendientes o confirmados no se pueden modificar.</p>
 
 
@@ -46,17 +49,17 @@
 
 </section>
 <section class="panel feature-panel">
-    <h2>Editar ítems de la compra</h2>
+    <h2 id="titulo-edicion-items">Ítems</h2>
     <p>Puedes retirar ítems marcando la casilla correspondiente. Debe quedar al menos un ítem activo.</p>
         {% for item, formulario_item in formularios_items %}
-        <fieldset class="panel">
+        <fieldset class="panel item-edicion">
             <legend>Ítem {{ forloop.counter }}</legend>
             {{ formulario_item.as_p }}
         </fieldset>
         {% empty %}
         <p>No hay ítems activos.</p>
         {% endfor %}
-        <h2>Agregar ítems</h2>
+        <h2 id="titulo-nuevos">Agregar ítems</h2>
         {{ nuevos_items.management_form }}
         {{ nuevos_items.non_form_errors }}
         <div id="nuevos-items">
@@ -66,22 +69,24 @@
         </div>
         <template id="nuevo-item"><fieldset class="panel">{{ nuevos_items.empty_form.as_p }}</fieldset></template>
         <button type="button" class="button outline" id="agregar-item-edicion">+ Agregar ítem</button>
+</section>
+</div>
+<div class="verificacion-compra">
+    <section class="panel feature-panel">
+        <h2>Verificación</h2>
+        <div class="linea-verificacion"><span>Suma de ítems</span><strong id="edicion-subtotal">$ {{ subtotal|floatformat:2 }}</strong></div>
+        <div class="linea-verificacion"><span>+ IVA</span><strong id="edicion-iva">$ {{ compra.impuesto|floatformat:2 }}</strong></div>
+        <div class="linea-verificacion"><span>− Descuento</span><strong id="edicion-descuento">$ {{ compra.descuento|floatformat:2 }}</strong></div>
+        <div class="linea-verificacion"><span>Total calculado</span><strong id="edicion-total">$ {{ compra.total|floatformat:2 }}</strong></div>
+        <p id="aviso-edicion" aria-live="polite"></p>
         <div class="quick-links">
-            <button type="submit" class="button primary">Guardar todos los cambios</button>
+            <button type="button" class="button primary" id="siguiente-edicion" hidden>Siguiente: asignar</button>
+            <button type="button" class="button outline" id="anterior-edicion" hidden>Anterior</button>
+            <button type="submit" class="button primary" id="guardar-edicion">Guardar todos los cambios</button>
             <a class="button outline" href="{% url 'compra_detalle' compra.pk %}">Cancelar</a>
         </div>
-</section>
+    </section>
+</div></div>
 </form>
-<script>
-    const agregar = document.getElementById('agregar-item-edicion');
-    const cantidad = document.getElementById('id_nuevos-TOTAL_FORMS');
-    const maximo = document.getElementById('id_nuevos-MAX_NUM_FORMS');
-    agregar.addEventListener('click', () => {
-        const indice = Number(cantidad.value);
-        if (indice >= Number(maximo.value)) return;
-        const plantilla = document.getElementById('nuevo-item');
-        document.getElementById('nuevos-items').insertAdjacentHTML('beforeend', plantilla.innerHTML.replace(/__prefix__/g, indice));
-        cantidad.value = indice + 1;
-    });
-</script>
+<script src="{% static 'js/compra_editar.js' %}" defer></script>
 {% endblock %}
