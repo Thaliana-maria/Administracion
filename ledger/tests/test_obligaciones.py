@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.test import TestCase
 
 from accounts.models import Usuario
@@ -39,7 +39,7 @@ class PruebasObligacionesYPagos(TestCase):
         self.obligacion = item.asignaciones.get().obligacion
         self.compra = compra
 
-    def registrar_abono(self, monto="2000.00"):
+    def registrar_abono(self, monto="2000.00", estado="confirmado"):
         return registrar_pago(
             self.deudor,
             grupo_id=self.grupo.pk,
@@ -48,6 +48,7 @@ class PruebasObligacionesYPagos(TestCase):
             monto=monto,
             fecha=date.today(),
             aplicaciones=[(self.obligacion.pk, monto)],
+            estado=estado,
         )
 
     def test_abono_queda_vinculado_y_recalcula_saldos(self):
@@ -65,7 +66,7 @@ class PruebasObligacionesYPagos(TestCase):
             self.registrar_abono("10000.01")
 
     def test_editar_pago_conserva_aplicaciones_anteriores(self):
-        pago = self.registrar_abono()
+        pago = self.registrar_abono(estado="pendiente")
         anterior = pago.aplicaciones.get()
 
         from ledger.services.obligaciones import actualizar_pago
@@ -82,7 +83,7 @@ class PruebasObligacionesYPagos(TestCase):
         pago.refresh_from_db()
         self.assertTrue(anterior.anulada)
         self.assertEqual(pago.aplicaciones.filter(anulada=False).count(), 1)
-        self.assertEqual(self.obligacion.saldo_pendiente, Decimal("7500.00"))
+        self.assertEqual(self.obligacion.saldo_pendiente, Decimal("10000.00"))
         self.assertTrue(Historial.objects.filter(tipo_registro="ledger.Pago", accion="editar").exists())
 
     def test_editar_pago_historico_sin_aplicaciones_conserva_y_audita(self):
@@ -92,6 +93,7 @@ class PruebasObligacionesYPagos(TestCase):
             acreedor=self.acreedor,
             monto=100,
             fecha=date.today(),
+            estado="pendiente",
         )
 
         from ledger.services.obligaciones import actualizar_pago
@@ -113,7 +115,7 @@ class PruebasObligacionesYPagos(TestCase):
         pago = self.registrar_abono()
         aplicacion = pago.aplicaciones.get()
 
-        anular_pago(self.deudor, pago.pk)
+        anular_pago(self.acreedor, pago.pk)
         pago.refresh_from_db()
         aplicacion.refresh_from_db()
 
@@ -127,12 +129,13 @@ class PruebasObligacionesYPagos(TestCase):
         pago = self.registrar_abono()
         aplicacion = pago.aplicaciones.get()
 
-        anular_compra(self.acreedor, self.compra.pk)
+        with self.assertRaises(ValidationError):
+            anular_compra(self.acreedor, self.compra.pk)
 
         self.compra.refresh_from_db()
         pago.refresh_from_db()
         aplicacion.refresh_from_db()
-        self.assertTrue(self.compra.anulada)
+        self.assertFalse(self.compra.anulada)
         self.assertFalse(pago.anulada)
         self.assertFalse(aplicacion.anulada)
         self.assertEqual(Pago.objects.count(), 1)
