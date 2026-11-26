@@ -477,7 +477,7 @@ python manage.py migrate
 python manage.py test
 ```
 
-Las migraciones nuevas agregan el estado de archivado, las claves únicas de operación, las revisiones de compras, la autorización de datos personales, el estado de los pagos y las tablas de compensaciones con su fecha de aplicación. Los grupos existentes conservan el estado activo y los pagos anteriores quedan confirmados por defecto para conservar el cálculo histórico. No se generan revisiones retroactivas de compras existentes.
+Las migraciones nuevas agregan el estado de archivado, las claves únicas de operación, las revisiones de compras, la autorización de datos personales, el estado de los pagos y las tablas de compensaciones con su fecha de aplicación. Los grupos existentes conservan el estado activo y los pagos anteriores quedan confirmados por defecto para conservar el cálculo histórico. No se generan revisiones retroactivas de compras existentes. La migración accounts/0003_usuario_correo_unico.py comprueba los correos duplicados sin distinguir mayúsculas antes de añadir la restricción; si encuentra duplicados, se detiene sin eliminar cuentas.
 
 En producción, con la configuración de caché de base de datos, ejecuta también python manage.py createcachetable. Comprueba primero los resultados en una copia de la base de datos.
 
@@ -486,6 +486,7 @@ En producción, con la configuración de caché de base de datos, ejecuta tambi�
 Con el entorno virtual activo:
 
 ```powershell
+python manage.py test accounts.tests.test_auth -v 2
 python manage.py test ledger.tests.test_compensaciones -v 2
 python manage.py test ledger.tests.test_saldos -v 2
 python manage.py test ledger.tests.test_obligaciones -v 2
