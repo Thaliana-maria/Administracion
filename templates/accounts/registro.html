@@ -25,12 +25,17 @@
                 {% for campo in formulario.hidden_fields %}{{ campo }}{{ campo.errors }}{% endfor %}
                 {% if formulario.non_field_errors %}<div class="form-error" role="alert">{{ formulario.non_field_errors }}</div>{% endif %}
                 {% for campo in formulario.visible_fields %}
+                {% if campo.name == "aceptar_datos" %}
+                <label class="consent-line" for="{{ campo.id_for_label }}">{{ campo }}<span>{{ campo.label }}</span></label>
+                {% for error in campo.errors %}<span class="field-error" role="alert">{{ error }}</span>{% endfor %}
+                {% else %}
                 <div class="purchase-field">
                     {{ campo.label_tag }}
                     {{ campo }}
                     {% if campo.name == "password1" %}<small class="help-text">La contraseña se almacena mediante un hash seguro.</small>{% endif %}
                     {% for error in campo.errors %}<span class="field-error" role="alert">{{ error }}</span>{% endfor %}
                 </div>
+                {% endif %}
                 {% endfor %}
 
                 <button class="button primary" type="submit">
