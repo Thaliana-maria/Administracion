@@ -411,8 +411,10 @@ def editar_compra(request, compra_id):
 
     formulario = EditarCompraForm(
         request.POST or None,
+        grupo=compra.grupo,
         initial={
             "fecha": compra.fecha,
+            "pagador": compra.pagador_id,
             "descripcion": compra.descripcion,
             "impuesto": compra.impuesto,
             "descuento": compra.descuento,
@@ -426,6 +428,7 @@ def editar_compra(request, compra_id):
                 compra.pk,
                 fecha=formulario.cleaned_data["fecha"],
                 descripcion=formulario.cleaned_data["descripcion"],
+                pagador_id=formulario.cleaned_data["pagador"].pk if formulario.cleaned_data["pagador"] else None,
                 impuesto=formulario.cleaned_data["impuesto"] or 0,
                 descuento=formulario.cleaned_data["descuento"] or 0,
             )
