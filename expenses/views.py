@@ -52,7 +52,8 @@ from expenses.services.registros import (
     actualizar_items_compra,
     version_compra,
 )
-from ledger.models import Pago
+from ledger.models import Pago, Compensacion, TramoCompensacion
+from ledger.services.compensaciones import solicitar_compensacion, responder_compensacion, cancelar_compensacion, confirmar_compensacion
 from ledger.services.obligaciones import (
     anular_pago as servicio_anular_pago,
     actualizar_pago,
@@ -855,6 +856,7 @@ def historial_grupo(request, grupo_id):
         (("Item", "expenses.Item"), Item.objects.filter(compra__grupo=grupo)),
         (("Asignacion", "expenses.Asignacion"), Asignacion.objects.filter(item__compra__grupo=grupo)),
         (("Pago", "ledger.Pago"), Pago.objects.filter(grupo=grupo)),
+        (("Compensacion", "ledger.Compensacion"), Compensacion.objects.filter(grupo=grupo)),
         (("Obligacion", "ledger.Obligacion"), Obligacion.objects.filter(grupo=grupo)),
         (("AplicacionPago", "ledger.AplicacionPago"), AplicacionPago.objects.filter(pago__grupo=grupo)),
     ]
@@ -964,6 +966,9 @@ def responder_compra(request, compra_id):
         raise PermissionDenied("La compra es de solo lectura.")
     revision = get_object_or_404(RevisionCompra.objects.select_for_update(), compra=compra, usuario=request.user)
     accion = request.POST.get("accion")
+    if accion == "objetada" and TramoCompensacion.objects.filter(obligacion__asignacion__item__compra=compra, compensacion__estado__in=["pendiente", "aprobada", "aplicada"]).exists():
+        messages.error(request, "La compra está vinculada a una compensación. Consulta el historial con el grupo.")
+        return redirect("compra_detalle", compra_id=compra.pk)
     if accion == "objetada" and compra.items.filter(asignaciones__obligacion__aplicaciones__anulada=False, asignaciones__obligacion__aplicaciones__pago__anulada=False, asignaciones__obligacion__aplicaciones__pago__estado="confirmado").exists():
         messages.error(request, "La compra ya tiene pagos confirmados. Consulta el historial con el grupo.")
         return redirect("compra_detalle", compra_id=compra.pk)
@@ -996,3 +1001,54 @@ def editar_grupo(request, grupo_id):
     else:
         messages.error(request, "Ingresa un nombre válido de máximo 100 caracteres.")
     return redirect("grupo_detalle", grupo_id=grupo.pk)
+
+
+@login_required
+@require_POST
+def solicitar_compensacion_vista(request, grupo_id):
+    grupo = _grupo_del_usuario(request, grupo_id)
+    formulario = forms.Form(request.POST)
+    formulario.fields["deudor"] = forms.IntegerField(min_value=1)
+    formulario.fields["acreedor"] = forms.IntegerField(min_value=1)
+    formulario.fields["monto"] = forms.DecimalField(min_value=Decimal("0.01"), max_digits=12, decimal_places=2)
+    formulario.fields["clave"] = forms.UUIDField()
+    if formulario.is_valid():
+        datos = formulario.cleaned_data
+        try:
+            solicitar_compensacion(request.user, grupo.pk, datos["deudor"], datos["acreedor"], datos["monto"], datos["clave"])
+        except ValidationError as error:
+            messages.error(request, " ".join(error.messages))
+        else:
+            messages.success(request, "Solicitud registrada. Espera las aprobaciones.")
+    else:
+        messages.error(request, "Los datos de la compensación no son válidos.")
+    return redirect("compensaciones_grupo", grupo_id=grupo.pk)
+
+
+@login_required
+@require_POST
+def responder_compensacion_vista(request, grupo_id, compensacion_id):
+    grupo = _grupo_del_usuario(request, grupo_id)
+    accion = request.POST.get("accion")
+    try:
+        if accion in ("aceptar", "rechazar"):
+            responder_compensacion(request.user, grupo.pk, compensacion_id, accion == "aceptar")
+        elif accion == "cancelar":
+            cancelar_compensacion(request.user, grupo.pk, compensacion_id)
+        elif accion == "confirmar":
+            confirmar_compensacion(request.user, grupo.pk, compensacion_id)
+        else:
+            raise ValidationError("La acción no es válida.")
+    except ValidationError as error:
+        messages.error(request, " ".join(error.messages))
+    else:
+        messages.success(request, "La compensación fue actualizada.")
+    return redirect("compensaciones_grupo", grupo_id=grupo.pk)
+
+
+@login_required
+def compensaciones_grupo(request, grupo_id):
+    grupo = _grupo_del_usuario(request, grupo_id)
+    solicitudes = grupo.compensaciones.select_related("deudor", "acreedor", "solicitante").prefetch_related("aprobaciones__usuario").order_by("-fecha", "-pk")
+    pagina = Paginator(solicitudes, 20).get_page(request.GET.get("pagina"))
+    return render(request, "expenses/compensaciones.html", {"grupo": grupo, "solicitudes": pagina})
