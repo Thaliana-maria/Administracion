@@ -29,8 +29,12 @@ def solicitar_compensacion(usuario, grupo_id, deudor_id, acreedor_id, monto, cla
         return anterior
     if Compensacion.objects.filter(grupo=grupo, deudor_id=deudor_id, acreedor_id=acreedor_id, estado__in=["pendiente", "aprobada"]).exists():
         raise ValidationError("Ya existe una solicitud activa entre estas personas.")
+    integrantes = set(Membresia.objects.filter(grupo=grupo, activo=True).values_list("usuario_id", flat=True))
+    integrantes.add(grupo.creador_id)
+    if deudor_id not in integrantes or acreedor_id not in integrantes:
+        raise ValidationError("Las personas deben pertenecer al grupo.")
     obligaciones = list(Obligacion.objects.select_for_update().filter(
-        grupo=grupo, anulada=False, asignacion__anulada=False,
+        grupo=grupo, deudor_id__in=integrantes, acreedor_id__in=integrantes, anulada=False, asignacion__anulada=False,
         asignacion__item__anulada=False, asignacion__item__compra__anulada=False,
     ).exclude(asignacion__item__compra__revisiones__estado="objetada").order_by("pk"))
     ids = [obligacion.pk for obligacion in obligaciones]
@@ -55,8 +59,6 @@ def solicitar_compensacion(usuario, grupo_id, deudor_id, acreedor_id, monto, cla
     cadena = buscar_cadena(disponibles, deudor_id, acreedor_id, monto)
     if len(cadena) < 3:
         raise ValidationError("No existe una cadena indirecta disponible para este monto.")
-    integrantes = set(Membresia.objects.filter(grupo=grupo, activo=True).values_list("usuario_id", flat=True))
-    integrantes.add(grupo.creador_id)
     if not set(cadena).issubset(integrantes):
         raise ValidationError("Todos los participantes deben pertenecer al grupo.")
     compensacion = Compensacion.objects.create(
