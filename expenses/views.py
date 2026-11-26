@@ -48,6 +48,7 @@ from expenses.services.registros import (
     anular_item,
     actualizar_compra,
     actualizar_item,
+    actualizar_items_compra,
 )
 from ledger.models import Pago
 from ledger.services.obligaciones import (
@@ -409,8 +410,32 @@ def editar_compra(request, compra_id):
         request.user,
     )
 
+    items_activos = list(compra.items.filter(anulada=False).prefetch_related("asignaciones").order_by("pk"))
+    editar_items = request.method == "POST" and request.POST.get("accion") == "editar_items"
+    formularios_items = [
+        (item, EditarItemForm(
+            request.POST if editar_items else None,
+            prefix=f"item-{item.pk}",
+            grupo=compra.grupo,
+            initial={"descripcion": item.descripcion, "valor": item.valor,
+                     "beneficiarios": [fila.beneficiario_id for fila in item.asignaciones.all() if not fila.anulada]},
+        )) for item in items_activos
+    ]
+    if editar_items:
+        resultados = [formulario_item.is_valid() for _, formulario_item in formularios_items]
+        if resultados and all(resultados):
+            try:
+                actualizar_items_compra(request.user, compra.pk, {
+                    item.pk: formulario_item.cleaned_data for item, formulario_item in formularios_items
+                })
+            except ValidationError as error:
+                messages.error(request, " ".join(error.messages))
+            else:
+                messages.success(request, "Los ítems fueron actualizados.")
+                return redirect("compra_detalle", compra_id=compra.pk)
+
     formulario = EditarCompraForm(
-        request.POST or None,
+        request.POST if request.method == "POST" and not editar_items else None,
         grupo=compra.grupo,
         initial={
             "fecha": compra.fecha,
@@ -421,7 +446,7 @@ def editar_compra(request, compra_id):
         },
     )
 
-    if request.method == "POST" and formulario.is_valid():
+    if request.method == "POST" and not editar_items and formulario.is_valid():
         try:
             actualizar_compra(
                 request.user,
@@ -447,7 +472,8 @@ def editar_compra(request, compra_id):
         {
             "compra": compra,
             "formulario": formulario,
-            "items_activos": compra.items.filter(anulada=False),
+            "items_activos": items_activos,
+            "formularios_items": formularios_items,
             "subtotal": compra.total - compra.impuesto + compra.descuento,
         },
     )
