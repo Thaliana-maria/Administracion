@@ -186,14 +186,16 @@ Las entidades principales son:
 | Entidad | Información que guarda |
 | --- | --- |
 | Usuario | Correo, nombre y datos de autenticación. |
-| Grupo | Nombre, creador y fecha de creación. |
+| Grupo | Nombre, creador, fecha de creación y estado de archivado. |
 | Membresia | Usuario, grupo, rol y estado activo. |
 | Compra | Grupo, pagador, fecha, total, impuesto y descuento. |
 | Item | Artículo de una compra y su valor. |
 | Asignacion | Parte del valor que corresponde a un beneficiario. |
 | AjusteCompra | Valor de ajuste asignado a un beneficiario. |
 | Obligacion | Deuda asociada a una asignación. |
-| Pago | Transferencia entre deudor y acreedor. |
+| Pago | Transferencia entre deudor y acreedor, con estado pendiente, confirmado o rechazado. |
+| RevisionCompra | Estado de revisión de una compra por cada usuario afectado. |
+| OperacionRegistro | Clave única para evitar registros duplicados de compras y pagos. |
 | AplicacionPago | Parte de un pago aplicada a una obligación. |
 | Historial | Usuario, acción, registro afectado, detalles y fecha. |
 
@@ -225,6 +227,10 @@ erDiagram
     PAGO ||--o{ APLICACION_PAGO : distribuye
     OBLIGACION ||--o{ APLICACION_PAGO : recibe
     USUARIO ||--o{ HISTORIAL : realiza
+    COMPRA ||--o{ REVISION_COMPRA : recibe
+    USUARIO ||--o{ REVISION_COMPRA : revisa
+    GRUPO ||--o{ OPERACION_REGISTRO : contiene
+    USUARIO ||--o{ OPERACION_REGISTRO : solicita
     USUARIO {
         int id PK
         string email UK
@@ -236,6 +242,7 @@ erDiagram
         int creador_id FK
         string nombre
         datetime fecha_creacion
+        boolean archivado
     }
     MEMBRESIA {
         int id PK
@@ -292,7 +299,22 @@ erDiagram
         int registrado_por_id FK
         decimal monto
         date fecha
+        string estado
         boolean anulada
+    }
+    REVISION_COMPRA {
+        int id PK
+        int compra_id FK
+        int usuario_id FK
+        string estado
+    }
+    OPERACION_REGISTRO {
+        int id PK
+        uuid clave UK
+        string tipo
+        int registro_id
+        int grupo_id FK
+        int usuario_id FK
     }
     APLICACION_PAGO {
         int id PK
@@ -312,7 +334,7 @@ erDiagram
     }
 ```
 
-Historial identifica el registro afectado mediante su tipo e identificador, no mediante una llave foránea a cada tabla.
+Historial identifica el registro afectado mediante su tipo e identificador, no mediante una llave foránea a cada tabla. OperacionRegistro también identifica la compra o el pago mediante tipo y registro_id. RevisionCompra tiene una restricción única por compra y usuario.
 
 ## Funcionamiento de una compra
 
