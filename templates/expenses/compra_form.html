@@ -91,7 +91,7 @@
                 <legend>Ítem</legend>
                 {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
                 {% for field in formset.empty_form.visible_fields %}
-                <div class="purchase-field">
+                <div class="purchase-field" data-campo="{{ field.name }}">
                     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                     {{ field }}
                     {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
@@ -112,6 +112,7 @@
         <div class="live-total">
             <span>Total estimado</span>
             <strong id="purchase-total">$ 0</strong>
+            <p id="verificacion-total" aria-live="polite"></p>
         </div>
     </section>
 
