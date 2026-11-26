@@ -1,23 +1,44 @@
-﻿
 {% extends "base.html" %}
-
 {% block titulo %}Compra #{{ compra.id }} | {{ compra.grupo.nombre }}{% endblock %}
-
 {% block contenido %}
 <div class="page-heading">
     <div>
-        <span class="breadcrumb">
-            <a href="{% url 'grupo_detalle' compra.grupo.id %}">
-                {{ compra.grupo.nombre }}
-            </a>
-            / Compra #{{ compra.id }}
-        </span>
-        <h1>Detalle de la compra</h1>
-        <p>Consulta los productos y la distribución de los gastos.</p>
+        <span class="breadcrumb">{{ compra.fecha|date:"d M" }} · pagó {{ compra.pagador.get_full_name|default:compra.pagador.email }}{% if compra.registrado_por %} · registrada por {{ compra.registrado_por.get_full_name|default:compra.registrado_por.email }}{% endif %}</span>
+        <h1>{{ compra.descripcion|default:"Detalle de compra" }}</h1>
     </div>
-    <div class="quick-links">{% if puede_editar %}<a class="button outline" href="{% url 'editar_compra' compra.id %}">Editar compra</a><a class="button danger" data-confirmacion="¿Deseas anular esta compra?" data-aviso="Se conservará el historial. Si existen abonos pendientes o confirmados, la anulación no se permitirá." href="{% url 'confirmar_anulacion_compra' compra.id %}">Anular compra</a>{% endif %}<a class="button outline" href="{% url 'compras_lista' compra.grupo.id %}">Volver a compras</a></div>
+    <div class="quick-links">
+        {% if puede_editar %}
+        <a class="button outline" href="{% url 'editar_compra' compra.id %}">Editar compra</a>
+        <a class="button danger" data-confirmacion="¿Anular la compra «{{ compra.descripcion|default:'Compra' }}»?" data-aviso="Se conservará el historial. Si existen abonos pendientes o confirmados, la anulación no se permitirá." data-boton="Anular compra" href="{% url 'confirmar_anulacion_compra' compra.id %}">Anular compra</a>
+        {% endif %}
+    </div>
 </div>
-
+<div class="detail-grid detalle-financiero">
+    <section class="panel feature-panel">
+        <h2>Ítems y asignación</h2>
+        <div class="table-wrap"><table class="data-table tabla-detalle-compra">
+            <thead><tr><th>Ítem</th><th>Valor</th><th>Asignado a</th></tr></thead>
+            <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.descripcion }}{% if item.anulada %} (Anulado){% endif %}</td>
+                <td>$ {{ item.valor|floatformat:"2g" }}</td>
+                <td>{% for asignacion in item.asignaciones.all %}{% if not asignacion.anulada or item.anulada or compra.anulada %}<div>{{ asignacion.beneficiario.get_full_name|default:asignacion.beneficiario.email }} · $ {{ asignacion.valor_asignado|floatformat:"2g" }}{% if asignacion.anulada %} (Anulada){% endif %}</div>{% endif %}{% endfor %}</td>
+            </tr>
+            {% empty %}<tr><td colspan="3">No hay ítems registrados.</td></tr>{% endfor %}
+            </tbody>
+        </table></div>
+        <div class="linea-detalle"><span>+ IVA</span><strong>$ {{ compra.impuesto|floatformat:"2g" }}</strong></div>
+        <div class="linea-detalle"><span>− Descuento</span><strong>$ {{ compra.descuento|floatformat:"2g" }}</strong></div>
+        <div class="linea-detalle total-detalle"><span>Total</span><strong>$ {{ compra.total|floatformat:"2g" }}</strong></div>
+    </section>
+    <section class="panel feature-panel">
+        <h2>Estado</h2>
+        <span class="estado-compra {% if compra.anulada %}estado-anulada{% endif %}">{% if compra.anulada %}Anulada{% else %}Activa{% endif %}</span>
+        <p class="form-help">Quien registró la compra o un administrador puede editarla o anularla, siempre que no existan abonos pendientes o confirmados. Queda constancia en el historial.</p>
+        {% if compra.grupo.archivado %}<p>Grupo archivado · Solo lectura</p>{% endif %}
+    </section>
+</div>
 <section class="panel feature-panel">
     <h2>Revisión de integrantes</h2>
     <p>Las objeciones impiden nuevos abonos sobre esta compra hasta resolverlas. Los saldos no cambian automáticamente.</p>
@@ -31,118 +52,6 @@
         {% endif %}
     {% empty %}<p>No hay revisiones pendientes de integrantes.</p>{% endfor %}
 </section>
-<section class="stats-grid purchase-detail-stats">
-    <article class="panel stat">
-        <small>Total de la compra</small>
-        <strong>$ {{ compra.total|floatformat:2 }}</strong>
-        <span>Valor registrado</span>
-    </article>
 
-    <article class="panel stat">
-        <small>Fecha</small>
-        <strong>{{ compra.fecha|date:"d/m/Y" }}</strong>
-        <span>Fecha del movimiento</span>
-    </article>
-
-    <article class="panel stat">
-        <small>Pagador</small>
-        <strong class="purchase-person">
-            {{ compra.pagador.get_full_name|default:compra.pagador.email }}
-        </strong>
-        <span>Persona que realizó el pago</span>
-    </article>
-
-    <article class="panel stat">
-        <small>Ítems</small>
-        <strong>{{ items|length }}</strong>
-        <span>Conceptos registrados</span>
-    </article>
-</section>
-
-<section class="panel feature-panel">
-    <h2>Información de la compra</h2>
-    <p>Estado: {% if compra.anulada %}Anulada{% else %}Activa{% endif %}</p>
-    <p>IVA adicional: $ {{ compra.impuesto|floatformat:2 }}</p>
-    <p>Descuento: $ {{ compra.descuento|floatformat:2 }}</p>
-
-    <div class="purchase-information">
-        <div>
-            <small>Grupo</small>
-            <strong>{{ compra.grupo.nombre }}</strong>
-        </div>
-
-        <div>
-            <small>Descripción</small>
-            <strong>{{ compra.descripcion|default:"Sin descripción" }}</strong>
-        </div>
-    </div>
-</section>
-
-<section class="panel feature-panel">
-    <div class="section-heading">
-        <div>
-            <h2>Detalle de los ítems</h2>
-            <p>Distribución del valor entre los beneficiarios.</p>
-        </div>
-    </div>
-
-    <div class="purchase-items-detail">
-        {% for item in items %}
-            <article class="purchase-item-detail">
-                <div class="section-heading">
-                    <div>
-                        <span class="breadcrumb">Ítem {{ forloop.counter }}</span>
-                        <h3>{{ item.descripcion }}</h3>
-                    </div>
-                    <strong class="purchase-item-value">
-                        $ {{ item.valor|floatformat:2 }}
-                    </strong>
-                </div>
-
-                {% if item.anulada %}<p>Ítem anulado</p>{% elif puede_editar %}<a class="button outline" href="{% url 'editar_item' item.id %}">Editar ítem</a>{% endif %}
-                <h4>Beneficiarios y valores asignados</h4>
-
-                <div class="table-wrap">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Beneficiario</th>
-                                <th>Valor asignado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for asignacion in item.asignaciones.all %}
-                                <tr>
-                                    <td>
-                                        {{ asignacion.beneficiario.get_full_name|default:asignacion.beneficiario.email }}
-                                    </td>
-                                    <td>
-                                        $ {{ asignacion.valor_asignado|floatformat:2 }}{% if asignacion.anulada %} (Anulada){% endif %}
-                                    </td>
-                                </tr>
-                            {% empty %}
-                                <tr>
-                                    <td colspan="2">
-                                        No hay asignaciones registradas.
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </article>
-        {% empty %}
-            <p>No hay ítems registrados en esta compra.</p>
-        {% endfor %}
-    </div>
-</section>
-
-<div class="quick-links">
-    <a class="button primary" href="{% url 'grupo_dashboard' compra.grupo.id %}">
-        Ir al dashboard
-    </a>
-    <a class="button outline" href="{% url 'grupo_detalle' compra.grupo.id %}">
-        Volver al grupo
-    </a>
-</div>
+<div class="quick-links"><a class="button outline" href="{% url 'compras_lista' compra.grupo.id %}">Volver a compras</a></div>
 {% endblock %}
