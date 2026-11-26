@@ -123,3 +123,52 @@ def cancelar_compensacion(usuario, grupo_id, compensacion_id):
     compensacion.save(update_fields=["estado"])
     registrar_cambio(usuario, compensacion, "cancelar", {"antes": anterior, "despues": "cancelada"})
     return compensacion
+
+
+@transaction.atomic
+def confirmar_compensacion(usuario, grupo_id, compensacion_id):
+    grupo = Grupo.objects.select_for_update().get(pk=grupo_id)
+    exigir_miembro(grupo_id, usuario)
+    if grupo.archivado:
+        raise ValidationError("El grupo está archivado.")
+    compensacion = Compensacion.objects.select_for_update().filter(pk=compensacion_id, grupo=grupo).first()
+    if compensacion is None or compensacion.acreedor_id != usuario.pk:
+        raise PermissionDenied("Solo el acreedor puede confirmar que recibió el dinero.")
+    if compensacion.estado == "aplicada":
+        return compensacion
+    if compensacion.estado != "aprobada":
+        raise ValidationError("La compensación requiere todas las aprobaciones.")
+    tramos = list(compensacion.tramos.select_related("obligacion__asignacion__item__compra").order_by("orden", "obligacion_id"))
+    parejas = {}
+    totales = {}
+    for tramo in tramos:
+        obligacion = tramo.obligacion
+        compra = obligacion.asignacion.item.compra
+        if obligacion.grupo_id != grupo_id or obligacion.anulada or obligacion.asignacion.anulada or obligacion.asignacion.item.anulada or compra.anulada or compra.revisiones.filter(estado="objetada").exists():
+            raise ValidationError("Una obligación de la cadena ya no está disponible.")
+        pagos = obligacion.aplicaciones.filter(anulada=False, pago__anulada=False, pago__estado__in=["pendiente", "confirmado"]).aggregate(total=Sum("monto"))["total"] or Decimal("0")
+        reservas = obligacion.tramos_compensacion.filter(compensacion__estado__in=["pendiente", "aprobada", "aplicada"]).exclude(compensacion=compensacion).aggregate(total=Sum("monto"))["total"] or Decimal("0")
+        if pagos + reservas + tramo.monto > obligacion.monto:
+            raise ValidationError("El monto disponible de una obligación cambió.")
+        pareja = (obligacion.deudor_id, obligacion.acreedor_id)
+        if tramo.orden in parejas and parejas[tramo.orden] != pareja:
+            raise ValidationError("La cadena de obligaciones no es válida.")
+        parejas[tramo.orden] = pareja
+        totales[tramo.orden] = totales.get(tramo.orden, Decimal("0")) + tramo.monto
+    cadena = [compensacion.deudor_id]
+    if len(parejas) < 2:
+        raise ValidationError("La compensación no contiene una cadena indirecta.")
+    for orden in range(1, len(parejas) + 1):
+        pareja = parejas.get(orden)
+        if pareja is None or pareja[0] != cadena[-1] or pareja[1] in cadena or totales[orden] != compensacion.monto:
+            raise ValidationError("Los tramos no coinciden con el monto o la cadena.")
+        cadena.append(pareja[1])
+    aprobados = set(compensacion.aprobaciones.filter(estado="aceptada").values_list("usuario_id", flat=True))
+    integrantes = set(Membresia.objects.filter(grupo=grupo, activo=True).values_list("usuario_id", flat=True))
+    integrantes.add(grupo.creador_id)
+    if cadena[-1] != compensacion.acreedor_id or aprobados != set(cadena) or not aprobados.issubset(integrantes):
+        raise ValidationError("Faltan aprobaciones válidas de los participantes.")
+    compensacion.estado = "aplicada"
+    compensacion.save(update_fields=["estado"])
+    registrar_cambio(usuario, compensacion, "aplicar", {"monto": str(compensacion.monto), "cadena": cadena, "fecha_confirmacion": timezone.now().isoformat()})
+    return compensacion
