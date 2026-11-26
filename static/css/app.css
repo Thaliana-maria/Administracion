@@ -1136,3 +1136,22 @@ tbody tr:last-child td {
     .auth-form { width: 100%; max-width: 420px; }
     .auth-form h2 { font-size: 20px; margin-bottom: 14px; }
 }
+
+
+.distribucion-compra { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(230px, 1fr); gap: 16px; align-items: start; }
+.datos-compra, .verificacion-compra { display: grid; gap: 14px; min-width: 0; }
+.indicador-paso { color: var(--teal); font-weight: 700; font-size: 13px; }
+.verificacion-compra .purchase-summary { display: grid; gap: 12px; }
+.verificacion-compra .live-total { min-width: 0; }
+.linea-verificacion { display: flex; justify-content: space-between; gap: 10px; }
+.regla-reparto { background: #D8EBF1; color: #10596C; padding: 12px; border-radius: 7px; font-size: 12px; }
+.acciones-compra { margin-top: 16px; }
+.button:disabled { opacity: .55; cursor: not-allowed; }
+@media (max-width: 850px) {
+    .distribucion-compra { grid-template-columns: 1fr; }
+}
+@media (max-width: 650px) {
+    .acciones-compra > .button { flex: 1 1 100%; }
+    .datos-compra .purchase-items { grid-template-columns: 1fr; }
+    .datos-compra .purchase-item { padding: 12px; }
+}
