@@ -15,6 +15,12 @@ class RegistroForm(UserCreationForm):
             "email": "Correo electrónico",
         }
 
+    def clean_email(self):
+        correo = self.cleaned_data["email"].strip().lower()
+        if Usuario.objects.filter(email__iexact=correo).exists():
+            raise forms.ValidationError("Este correo ya está registrado.")
+        return correo
+
 
 class PerfilForm(forms.ModelForm):
     """Permite editar únicamente los datos personales de la propia cuenta."""
