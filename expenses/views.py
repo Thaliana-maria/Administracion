@@ -282,6 +282,9 @@ def nueva_compra(request, grupo_id):
                     descripcion=formulario.cleaned_data["descripcion"],
                     items=items,
                     registrado_por=request.user,
+                    impuesto=formulario.cleaned_data.get("impuesto") or 0,
+                    descuento=formulario.cleaned_data.get("descuento") or 0,
+                    total_esperado=formulario.cleaned_data.get("total_esperado"),
                 )
             except ValidationError as error:
                 formulario.add_error(None, error)
