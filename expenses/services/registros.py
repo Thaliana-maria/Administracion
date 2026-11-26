@@ -7,6 +7,7 @@ from django.utils import timezone
 from auditlog.services import registrar_cambio
 from expenses.models import Asignacion, Compra, Grupo, Item, Membresia, RevisionCompra
 from expenses.services.ajustes import recalcular_ajustes_compra
+from expenses.services.reparto import repartir
 from expenses.services.permisos import exigir_puede_editar_compra
 from ledger.models import Obligacion
 
@@ -44,6 +45,7 @@ def renovar_revisiones(compra, usuario):
 def _datos_compra(compra):
     return {
         "fecha": compra.fecha.isoformat(),
+        "pagador_id": compra.pagador_id,
         "total": str(compra.total),
         "impuesto": str(compra.impuesto),
         "descuento": str(compra.descuento),
@@ -52,7 +54,7 @@ def _datos_compra(compra):
 
 
 @transaction.atomic
-def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion=None, impuesto=None, descuento=None):
+def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion=None, impuesto=None, descuento=None, pagador_id=None):
     grupo_id = Compra.objects.values_list("grupo_id", flat=True).get(pk=compra_id)
     Grupo.objects.select_for_update().get(pk=grupo_id)
     compra = Compra.objects.select_for_update().get(pk=compra_id)
@@ -96,11 +98,26 @@ def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion
                 raise ValidationError("El total de la compra debe coincidir con sus ítems.")
             compra.total = nuevo_total
 
+    if pagador_id is not None and pagador_id != compra.pagador_id:
+        if pagador_id != compra.grupo.creador_id and not Membresia.objects.filter(grupo=compra.grupo, usuario_id=pagador_id, activo=True).exists():
+            raise ValidationError("El pagador debe pertenecer al grupo.")
+        compra.pagador_id = pagador_id
+
     datos_nuevos = _datos_compra(compra)
     if datos_anteriores != datos_nuevos:
         _exigir_sin_abonos(compra)
         compra.save()
-        if datos_anteriores['impuesto'] != datos_nuevos['impuesto'] or datos_anteriores['descuento'] != datos_nuevos['descuento']:
+        if datos_anteriores["pagador_id"] != datos_nuevos["pagador_id"]:
+            for item in compra.items.filter(anulada=False):
+                existentes = list(item.asignaciones.filter(anulada=False).select_related("beneficiario").order_by("beneficiario__first_name", "beneficiario__last_name", "beneficiario__email"))
+                try:
+                    valores = repartir(item.valor, [fila.beneficiario for fila in existentes], pagador=compra.pagador_id)
+                except ValueError as error:
+                    raise ValidationError(str(error))
+                if any(valor <= 0 for valor in valores.values()):
+                    raise ValidationError("El reparto debe asignar al menos un peso a cada integrante.")
+                _reemplazar_asignaciones(item, usuario, valores, existentes)
+        if datos_anteriores["pagador_id"] != datos_nuevos["pagador_id"] or datos_anteriores['impuesto'] != datos_nuevos['impuesto'] or datos_anteriores['descuento'] != datos_nuevos['descuento']:
             recalcular_ajustes_compra(compra.pk)
         renovar_revisiones(compra, usuario)
         registrar_cambio(
