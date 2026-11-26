@@ -7,6 +7,7 @@ document.addEventListener("click", function (evento) {
     ventana.querySelector("h2").textContent = enlace.dataset.confirmacion;
     ventana.querySelector("p").textContent = enlace.dataset.aviso;
     ventana.querySelector("form").action = enlace.href;
+    ventana.querySelectorAll("[data-dato-confirmacion]").forEach(campo => campo.remove());
     ventana.querySelector("button[type=submit]").textContent = "Confirmar anulación";
     ventana.showModal();
 });
@@ -24,7 +25,20 @@ document.addEventListener("submit", function (evento) {
     evento.preventDefault();
     ventana.querySelector("h2").textContent = formulario.dataset.confirmacion;
     ventana.querySelector("p").textContent = formulario.dataset.aviso;
-    ventana.querySelector("form").action = formulario.action;
+    const destino = ventana.querySelector("form");
+    destino.action = formulario.action;
+    destino.querySelectorAll("[data-dato-confirmacion]").forEach(campo => campo.remove());
+    const datos = new FormData(formulario);
+    if (evento.submitter?.name) datos.append(evento.submitter.name, evento.submitter.value);
+    for (const [nombre, valor] of datos) {
+        if (nombre === "csrfmiddlewaretoken" || nombre === "confirmar" || typeof valor !== "string") continue;
+        const campo = document.createElement("input");
+        campo.type = "hidden";
+        campo.name = nombre;
+        campo.value = valor;
+        campo.dataset.datoConfirmacion = "";
+        destino.appendChild(campo);
+    }
     ventana.querySelector("button[type=submit]").textContent = formulario.dataset.boton || "Confirmar";
     ventana.showModal();
 });
