@@ -240,3 +240,42 @@ class PruebasPermisosYRegistros(TestCase):
             )
         self.compra.refresh_from_db()
         self.assertEqual(self.compra.descripcion, "Cambio previo")
+
+
+    def test_registro_repetido_devuelve_la_misma_compra(self):
+        from uuid import uuid4
+        from expenses.views import registrar_una_vez
+        from expenses.models import OperacionRegistro
+
+        clave = uuid4()
+        def crear():
+            return Compra.objects.create(grupo=self.grupo, pagador=self.pagador,
+                registrado_por=self.pagador, fecha=date.today(), total=10000)
+
+        primera = registrar_una_vez(self.pagador, self.grupo, clave, "compra", crear)
+        segunda = registrar_una_vez(self.pagador, self.grupo, clave, "compra", crear)
+        self.assertEqual(primera.pk, segunda.pk)
+        self.assertEqual(Compra.objects.filter(grupo=self.grupo).count(), 2)
+        self.assertEqual(OperacionRegistro.objects.filter(clave=clave).count(), 1)
+
+    def test_clave_de_operacion_no_se_comparte_entre_usuarios(self):
+        from uuid import uuid4
+        from expenses.views import registrar_una_vez
+
+        clave = uuid4()
+        registrar_una_vez(self.pagador, self.grupo, clave, "compra", lambda: self.compra)
+        with self.assertRaises(ValidationError):
+            registrar_una_vez(self.miembro, self.grupo, clave, "compra", lambda: self.compra)
+
+    def test_operacion_fallida_no_reserva_clave(self):
+        from uuid import uuid4
+        from expenses.views import registrar_una_vez
+        from expenses.models import OperacionRegistro
+
+        clave = uuid4()
+        def fallar():
+            raise ValidationError("Compra inválida")
+
+        with self.assertRaises(ValidationError):
+            registrar_una_vez(self.pagador, self.grupo, clave, "compra", fallar)
+        self.assertFalse(OperacionRegistro.objects.filter(clave=clave).exists())
