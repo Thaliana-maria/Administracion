@@ -9,3 +9,7 @@
 4. Aplicar migraciones y arrancar el servidor:
    `python manage.py migrate`
    `python manage.py runserver`
+   ## Entorno alternativo (Linux / macOS)
+```bash
+python3 -m venv venv
+source venv/bin/activate
