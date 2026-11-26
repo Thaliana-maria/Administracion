@@ -251,6 +251,9 @@ def nueva_compra(request, grupo_id):
     ItemFormSet = forms.formset_factory(
         ItemForm,
         extra=FILAS_ITEMS,
+        max_num=100,
+        validate_max=True,
+        absolute_max=100,
     )
 
     if request.method == "POST":
@@ -724,6 +727,9 @@ def dashboard_grupo(request, grupo_id):
         for usuario in _miembros(grupo)
     ]
 
+    mayor_saldo = max((abs(saldo) for _, saldo in filas_saldos), default=Decimal("0"))
+    barras_saldos = [(usuario, saldo, int(abs(saldo) * 100 / mayor_saldo) if mayor_saldo else 0) for usuario, saldo in filas_saldos]
+
     ultimas_compras = compras_activas.select_related(
         "pagador"
     ).order_by(
@@ -786,6 +792,7 @@ def dashboard_grupo(request, grupo_id):
             "total_pagos": total_pagos,
             "cantidad_integrantes": len(filas_saldos),
             "filas_saldos": filas_saldos,
+            "barras_saldos": barras_saldos,
             "ultimas_compras": ultimas_compras,
             "transferencias_sugeridas": transferencias_sugeridas,
             "error_simplificacion": error_simplificacion,
