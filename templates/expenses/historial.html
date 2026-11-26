@@ -3,11 +3,11 @@
 {% block contenido %}
 <div class="page-heading"><div><span class="breadcrumb">{{ grupo.nombre }}</span><h1>Historial de cambios</h1></div></div>
 <section class="panel feature-panel">
-<div class="table-wrap"><table class="data-table">
+<div class="table-wrap"><table class="data-table tabla-compras">
 <thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Registro</th><th>Acción</th><th>Valor anterior</th><th>Valor nuevo</th></tr></thead>
 <tbody>
 {% for cambio in cambios %}
-<tr><td data-etiqueta="Fecha">{{ cambio.fecha|date:"d/m/Y H:i" }}</td><td data-etiqueta="Usuario">{{ cambio.usuario.get_full_name|default:cambio.usuario.email }}</td><td data-etiqueta="Registro">{{ cambio.tipo_registro }} #{{ cambio.id_registro }}</td><td data-etiqueta="Acción">{{ cambio.accion }}</td><td data-etiqueta="Anterior">{{ cambio.detalles.antes|default:"—" }}</td><td data-etiqueta="Nuevo">{{ cambio.detalles.despues|default:"—" }}</td></tr>
+<tr><td data-etiqueta="Fecha">{{ cambio.fecha|date:"d/m/Y H:i" }}</td><td data-etiqueta="Usuario">{{ cambio.usuario.get_full_name|default:cambio.usuario.email }}</td><td data-etiqueta="Registro">{{ cambio.tipo_registro }} #{{ cambio.id_registro }}</td><td data-etiqueta="Acción">{{ cambio.accion }}</td><td data-etiqueta="Anterior">{{ cambio.detalles.antes|default_if_none:"—" }}</td><td data-etiqueta="Nuevo">{{ cambio.detalles.despues|default_if_none:"—" }}</td></tr>
 {% empty %}<tr><td colspan="6">No hay cambios registrados.</td></tr>{% endfor %}
 </tbody></table></div>
 <div class="quick-links">
