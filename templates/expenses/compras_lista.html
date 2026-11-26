@@ -8,7 +8,7 @@
         <span class="breadcrumb">{{ grupo.nombre }}</span>
         <h1>Compras</h1>
     </div>
-    <a class="button primary" href="{% url 'compra_nueva' grupo.id %}">Nueva compra</a>
+    {% if not grupo.archivado %}<a class="button primary" href="{% url 'compra_nueva' grupo.id %}">Nueva compra</a>{% else %}<span>Grupo archivado · Solo lectura</span>{% endif %}
 </div>
 <section class="panel feature-panel">
     <div class="table-wrap">
