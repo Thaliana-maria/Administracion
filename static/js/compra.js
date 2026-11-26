@@ -111,7 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
             verificacion.classList.toggle("field-error", Boolean(esperado && esperado.value && !coincide));
         }
         const botonSiguiente = document.getElementById("paso-siguiente");
-        if (botonSiguiente) botonSiguiente.disabled = total <= 0 || Boolean(esperado && esperado.validity.customError);
+        if (botonSiguiente) botonSiguiente.disabled = !Number.isFinite(total) || total <= 0 || total > 9999999999.99 || Boolean(esperado && esperado.validity.customError);
         mostrarReparto();
         totalElemento.textContent = "$ " + total.toLocaleString(
             "es-CO",
@@ -141,11 +141,7 @@ document.addEventListener("DOMContentLoaded", function () {
             calcularTotal();
         });
     }
-    formulario.addEventListener("submit", function () {
-        formulario.querySelectorAll('button[type="submit"]').forEach(function (boton) {
-            boton.disabled = true;
-        });
-    });
+
     window.addEventListener("pageshow", function () {
         formulario.querySelectorAll('button[type="submit"]').forEach(function (boton) {
             boton.disabled = false;
@@ -198,6 +194,19 @@ document.addEventListener("DOMContentLoaded", function () {
             const visibles = Array.from(formulario.elements).filter(campo => campo.willValidate && !campo.closest("[hidden]"));
             const incorrecto = visibles.find(campo => !campo.checkValidity());
             if (incorrecto) { incorrecto.reportValidity(); return; }
+            const filas = Array.from(formulario.querySelectorAll(".purchase-item"));
+            for (const fila of filas) {
+                const descripcion = fila.querySelector('[name$="-descripcion"]');
+                const valor = fila.querySelector('[name$="-valor"]');
+                if (!descripcion.value.trim() && !valor.value) continue;
+                if (!descripcion.value.trim() || !valor.value || Number(valor.value) <= 0) {
+                    const campo = !descripcion.value.trim() ? descripcion : valor;
+                    campo.setCustomValidity("Completa la descripción y el valor positivo del ítem.");
+                    campo.reportValidity();
+                    campo.addEventListener("input", () => campo.setCustomValidity(""), {once: true});
+                    return;
+                }
+            }
             mostrarPaso(2);
         });
         anterior.addEventListener("click", function () { mostrarPaso(1); });
@@ -216,5 +225,9 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         if (agregar) agregar.addEventListener("click", function () { mostrarPaso(paso); });
     }
+    formulario.addEventListener("submit", function (evento) {
+        if (evento.defaultPrevented) return;
+        formulario.querySelectorAll('button[type="submit"]').forEach(boton => boton.disabled = true);
+    });
     calcularTotal();
 });
