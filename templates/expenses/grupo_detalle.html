@@ -12,16 +12,14 @@
     </div>
 
     <a class="button primary" href="{% url 'grupo_dashboard' grupo.id %}">
-        Ver dashboard
+        Ver resumen
     </a>
 </div>
 
 <div class="quick-links">
-    <a class="button primary" href="{% url 'compra_nueva' grupo.id %}">
-        Registrar compra
-    </a>
+    {% if not grupo.archivado %}<a class="button primary" href="{% url 'compra_nueva' grupo.id %}">Registrar compra</a>{% endif %}
 
-    {% if puede_gestionar %}
+    {% if puede_gestionar and not grupo.archivado %}
     <a class="button outline" href="{% url 'integrante_nuevo' grupo.id %}">
         Agregar integrante
     </a>
@@ -124,11 +122,11 @@
             </table>
         </div>
 
-        <div class="quick-links">
+        {% if not grupo.archivado %}<div class="quick-links">
             <a class="button primary" href="{% url 'compra_nueva' grupo.id %}">
                 Registrar nueva compra
             </a>
-        </div>
+        </div>{% endif %}
     </section>
 </div>
 
@@ -179,6 +177,8 @@
                         <td>
                             {% if membresia.usuario_id == grupo.creador_id %}
                                 El creador conserva la administración.
+                            {% elif grupo.archivado %}
+                                Solo lectura
                             {% else %}
                                 <form
                                     method="post"
@@ -230,6 +230,16 @@
         </p>
     {% endif %}
 </section>
+{% if puede_gestionar and not grupo.archivado %}
+<section class="panel feature-panel">
+    <h2>Editar grupo</h2>
+    <form method="post" action="{% url 'editar_grupo' grupo.id %}">
+        {% csrf_token %}
+        {{ formulario_nombre.as_p }}
+        <button class="button primary" type="submit">Guardar cambios</button>
+    </form>
+</section>
+{% endif %}
 {% if not grupo.archivado and user.id != grupo.creador_id %}
 <section class="panel feature-panel"><h2>Salir del grupo</h2><p>Debes resolver tus obligaciones y pagos pendientes antes de salir.</p><form method="post" action="{% url 'retirar_integrante' grupo.id user.id %}">{% csrf_token %}<button class="button outline" type="submit">Salir del grupo</button></form></section>
 {% endif %}
