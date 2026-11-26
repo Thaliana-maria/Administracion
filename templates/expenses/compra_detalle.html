@@ -20,6 +20,19 @@
     </a>
 </div>
 
+<section class="panel feature-panel">
+    <h2>Revisión de integrantes</h2>
+    <p>Las objeciones quedan registradas para revisión del grupo. No modifican automáticamente los saldos.</p>
+    {% for revision in compra.revisiones.all %}
+        <p>{{ revision.usuario.get_full_name|default:revision.usuario.email }}: {{ revision.get_estado_display }}</p>
+        {% if revision.usuario_id == user.id and revision.estado == "pendiente" and not compra.anulada and not compra.grupo.archivado %}
+        <form method="post" action="{% url 'responder_compra' compra.id %}">{% csrf_token %}
+            <button class="button primary" name="accion" value="aceptada">Aceptar compra</button>
+            <button class="button outline" name="accion" value="objetada">Objetar compra</button>
+        </form>
+        {% endif %}
+    {% empty %}<p>No hay revisiones pendientes de integrantes.</p>{% endfor %}
+</section>
 <section class="stats-grid purchase-detail-stats">
     <article class="panel stat">
         <small>Total de la compra</small>
