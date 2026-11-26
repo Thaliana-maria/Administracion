@@ -1,5 +1,6 @@
 from decimal import Decimal
 from uuid import uuid4
+from django.utils import timezone
 from django.db import transaction
 from expenses.models import OperacionRegistro
 
@@ -8,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Q, Sum, Max
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -61,7 +62,7 @@ from ledger.services.obligaciones import (
     responder_pago,
 )
 from ledger.services.saldos import calcular_saldos
-from ledger.services.simplificacion import simplificar_deudas, transferencias_disponibles
+from ledger.services.simplificacion import simplificar_deudas, transferencias_disponibles, buscar_cadena
 
 
 FILAS_ITEMS = 5
@@ -764,6 +765,11 @@ def dashboard_grupo(request, grupo_id):
         {"fecha": pago.fecha, "id": pago.pk, "tipo": "Pago", "descripcion": "Pago a " + (pago.acreedor.get_full_name() or pago.acreedor.email), "persona": pago.deudor, "valor": pago.monto}
         for pago in ultimos_pagos
     ]
+    ultimas_compensaciones = grupo.compensaciones.filter(estado="aplicada").select_related("deudor", "acreedor").annotate(fecha_aplicacion=Max("aprobaciones__fecha_respuesta")).order_by("-fecha_aplicacion", "-pk")[:5]
+    movimientos.extend(
+        {"fecha": timezone.localtime(compensacion.fecha_aplicacion or compensacion.fecha).date(), "id": compensacion.pk, "tipo": "Compensación", "descripcion": "Compensación a " + (compensacion.acreedor.get_full_name() or compensacion.acreedor.email), "persona": compensacion.deudor, "valor": compensacion.monto, "compensacion_id": compensacion.pk}
+        for compensacion in ultimas_compensaciones
+    )
     movimientos.sort(key=lambda movimiento: (movimiento["fecha"], movimiento["id"], movimiento["tipo"]), reverse=True)
 
     transferencias_sugeridas = []
@@ -772,7 +778,10 @@ def dashboard_grupo(request, grupo_id):
 
     try:
         plan = simplificar_deudas(grupo, saldos=saldos)
-        disponibles = {(fila['deudor_id'], fila['acreedor_id']): fila['monto'] for fila in transferencias_disponibles(grupo)}
+        filas_disponibles = transferencias_disponibles(grupo)
+        disponibles = {(fila['deudor_id'], fila['acreedor_id']): fila['monto'] for fila in filas_disponibles}
+        integrantes_activos = set(_miembros(grupo).values_list("pk", flat=True))
+        cadenas_disponibles = [fila for fila in filas_disponibles if fila["deudor_id"] in integrantes_activos and fila["acreedor_id"] in integrantes_activos]
 
         ids_usuarios = {
             transferencia["deudor_id"]
@@ -812,6 +821,8 @@ def dashboard_grupo(request, grupo_id):
                     "deudor": deudor,
                     "acreedor": acreedor,
                     "monto": transferencia["monto"],
+                    "clave": uuid4(),
+                    "compensable": not grupo.archivado and len(buscar_cadena([fila for fila in cadenas_disponibles if (fila["deudor_id"], fila["acreedor_id"]) != (deudor.pk, acreedor.pk)], deudor.pk, acreedor.pk, transferencia["monto"])) >= 3,
                     "registrable": not grupo.archivado and disponibles.get((deudor.pk, acreedor.pk), 0) >= transferencia["monto"],
                 }
             )
