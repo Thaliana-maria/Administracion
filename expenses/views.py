@@ -47,6 +47,7 @@ from ledger.services.obligaciones import (
     anular_pago as servicio_anular_pago,
     actualizar_pago,
     registrar_pago_directo,
+    responder_pago,
 )
 from ledger.services.saldos import calcular_saldos
 from ledger.services.simplificacion import simplificar_deudas
@@ -856,8 +857,24 @@ def pagos_grupo(request, grupo_id):
         except ValidationError as error:
             formulario.add_error(None, error)
         else:
-            messages.success(request, "Pago registrado correctamente.")
+            messages.success(request, "Pago registrado. Espera la confirmación del acreedor.")
             return redirect("pagos_grupo", grupo_id=grupo.pk)
     pagos = grupo.pagos.select_related("deudor", "acreedor").order_by("-fecha", "-pk")
     pagina = Paginator(pagos, 20).get_page(request.GET.get("pagina"))
     return render(request, "expenses/pagos.html", {"grupo": grupo, "formulario": formulario, "pagos": pagina})
+
+
+@login_required
+@require_POST
+def responder_pago_vista(request, grupo_id, pago_id):
+    grupo = _grupo_del_usuario(request, grupo_id)
+    accion = request.POST.get("accion")
+    if accion not in ("confirmar", "rechazar"):
+        return redirect("pagos_grupo", grupo_id=grupo.pk)
+    try:
+        responder_pago(request.user, grupo.pk, pago_id, accion == "confirmar")
+    except ValidationError as error:
+        messages.error(request, " ".join(error.messages))
+    else:
+        messages.success(request, "Respuesta del pago registrada.")
+    return redirect("pagos_grupo", grupo_id=grupo.pk)
