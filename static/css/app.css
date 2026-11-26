@@ -1077,3 +1077,27 @@ tbody tr:last-child td {
     .lista-compras-movil > .button { width: 100%; }
     .accesos-grupo-movil { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 }
+
+
+.tarjetas-cambios { display: none; }
+
+@media (max-width: 650px) {
+    .pantalla-pagos { grid-template-columns: 1fr; gap: 12px; }
+    .formulario-pago { background: transparent; border: 0; box-shadow: none; padding: 0; }
+    .formulario-pago > h2 { display: none; }
+    .formulario-pago form > .button { width: 100%; }
+    .formulario-pago form p { margin: 0 0 12px; }
+    .formulario-pago form label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 5px; }
+    .formulario-pago form input:not([type="hidden"]), .formulario-pago form select { width: 100%; background: white; }
+    .historial-pagos { padding: 12px; }
+    .historial-pagos h2 { font-size: 15px; }
+    .pantalla-cambios { background: transparent; border: 0; box-shadow: none; padding: 0; }
+    .pantalla-cambios > .table-wrap { display: none; }
+    .tarjetas-cambios { display: grid; gap: 12px; }
+    .tarjeta-cambio { background: white; border: 1px solid var(--line); border-radius: 9px; padding: 12px; display: grid; gap: 6px; overflow-wrap: anywhere; }
+    .encabezado-cambio { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .tarjeta-cambio small { color: var(--muted); font-size: 11px; }
+    .tarjeta-cambio p { margin: 0; font-size: 12px; }
+    .etiqueta-cambio { background: #D8EBF1; color: #10596C; border-radius: 12px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
+    .etiqueta-anulacion { background: #FBE5DB; color: #BF4824; }
+}
