@@ -25,9 +25,9 @@ def calcular_saldos(grupo):
             anulada=False,
         ).values_list("beneficiario_id", flat=True)
     ).union(
-        Pago.objects.filter(grupo_id=grupo_id, anulada=False).values_list("deudor_id", flat=True)
+        Pago.objects.filter(grupo_id=grupo_id, anulada=False, estado="confirmado").values_list("deudor_id", flat=True)
     ).union(
-        Pago.objects.filter(grupo_id=grupo_id, anulada=False).values_list("acreedor_id", flat=True)
+        Pago.objects.filter(grupo_id=grupo_id, anulada=False, estado="confirmado").values_list("acreedor_id", flat=True)
     )
     saldos = {usuario_id: Decimal("0.00") for usuario_id in miembros}
 
@@ -57,14 +57,14 @@ def calcular_saldos(grupo):
         if movimiento["beneficiario_id"] in saldos:
             saldos[movimiento["beneficiario_id"]] -= movimiento["total"] or Decimal("0.00")
 
-    pagos_enviados = Pago.objects.filter(grupo_id=grupo_id, anulada=False).values("deudor_id").annotate(
+    pagos_enviados = Pago.objects.filter(grupo_id=grupo_id, anulada=False, estado="confirmado").values("deudor_id").annotate(
         total=Sum("monto")
     )
     for movimiento in pagos_enviados:
         if movimiento["deudor_id"] in saldos:
             saldos[movimiento["deudor_id"]] += movimiento["total"] or Decimal("0.00")
 
-    pagos_recibidos = Pago.objects.filter(grupo_id=grupo_id, anulada=False).values("acreedor_id").annotate(
+    pagos_recibidos = Pago.objects.filter(grupo_id=grupo_id, anulada=False, estado="confirmado").values("acreedor_id").annotate(
         total=Sum("monto")
     )
     for movimiento in pagos_recibidos:
