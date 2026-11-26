@@ -1,11 +1,21 @@
 
 
 from django import forms
+from django.utils import timezone
 from django.contrib.auth.forms import UserCreationForm
 from .models import Usuario
 
 
 class RegistroForm(UserCreationForm):
+    aceptar_datos = forms.BooleanField(required=True, label="Autorizo el tratamiento de mis datos personales para gestionar mi cuenta y los gastos compartidos.", error_messages={"required": "Debes autorizar el tratamiento de datos para crear tu cuenta."})
+
+    def save(self, commit=True):
+        usuario = super().save(commit=False)
+        usuario.autorizacion_datos = timezone.now()
+        if commit:
+            usuario.save()
+        return usuario
+
     class Meta:
         model = Usuario
         fields = ["first_name", "last_name", "email"]
