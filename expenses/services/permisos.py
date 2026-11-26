@@ -84,6 +84,7 @@ def establecer_rol(usuario, grupo_id, miembro_id, rol):
     if grupo is None:
         raise ValidationError("El grupo indicado no existe.")
 
+    exigir_grupo_activo(grupo.pk)
     exigir_administrador(grupo, usuario)
 
     # Bloqueamos las membresías del grupo.
@@ -179,6 +180,7 @@ def establecer_rol(usuario, grupo_id, miembro_id, rol):
 
 
 def exigir_puede_editar_compra(compra, usuario):
+    exigir_grupo_activo(compra.grupo_id)
     exigir_miembro(compra.grupo_id, usuario)
 
     if es_administrador(compra.grupo_id, usuario):
@@ -192,6 +194,7 @@ def exigir_puede_editar_compra(compra, usuario):
 
 
 def exigir_puede_editar_pago(pago, usuario):
+    exigir_grupo_activo(pago.grupo_id)
     exigir_miembro(pago.grupo_id, usuario)
 
     if es_administrador(pago.grupo_id, usuario):
@@ -210,6 +213,7 @@ def retirar_integrante(usuario, grupo_id, miembro_id):
     from ledger.services.saldos import calcular_saldos
 
     grupo = Grupo.objects.select_for_update().get(pk=grupo_id)
+    exigir_grupo_activo(grupo.pk)
     exigir_miembro(grupo, usuario)
     if usuario.pk != miembro_id:
         exigir_administrador(grupo, usuario)
@@ -234,3 +238,34 @@ def retirar_integrante(usuario, grupo_id, miembro_id):
     membresia.save(update_fields=["activo"])
     registrar_cambio(usuario, membresia, "retirar", {"antes": "activo", "despues": "inactivo"})
     return membresia
+
+
+def exigir_grupo_activo(grupo_id):
+    if Grupo.objects.filter(pk=grupo_id, archivado=True).exists():
+        raise PermissionDenied("El grupo está archivado y es de solo lectura.")
+
+
+@transaction.atomic
+def archivar_grupo(usuario, grupo_id):
+    from ledger.models import Obligacion, Pago
+    from ledger.services.saldos import calcular_saldos
+
+    grupo = Grupo.objects.select_for_update().get(pk=grupo_id)
+    exigir_administrador(grupo, usuario)
+    if grupo.creador_id != usuario.pk:
+        raise PermissionDenied("Solo el creador puede archivar el grupo.")
+    if grupo.archivado:
+        return grupo
+    if any(calcular_saldos(grupo).values()):
+        raise ValidationError("Todos los saldos deben estar en cero.")
+    if Pago.objects.filter(grupo=grupo, anulada=False, estado="pendiente").exists():
+        raise ValidationError("Hay pagos pendientes de confirmación.")
+    obligaciones = Obligacion.objects.filter(grupo=grupo, anulada=False,
+        asignacion__anulada=False, asignacion__item__anulada=False,
+        asignacion__item__compra__anulada=False)
+    if any(obligacion.saldo_pendiente > 0 for obligacion in obligaciones):
+        raise ValidationError("Hay obligaciones directas pendientes.")
+    grupo.archivado = True
+    grupo.save(update_fields=["archivado"])
+    registrar_cambio(usuario, grupo, "archivar", {"antes": "activo", "despues": "archivado"})
+    return grupo
