@@ -24,7 +24,7 @@
 <section class="panel feature-panel edit-panel" id="datos-edicion">
     <h2>Información de la compra</h2>
     
-    <p>Las compras con pagos pendientes o confirmados no se pueden modificar.</p>
+    <p>Las compras con pagos pendientes, confirmados o compensaciones activas o aplicadas no se pueden modificar.</p>
 
 
         {% if formulario.non_field_errors %}
@@ -64,10 +64,10 @@
         {{ nuevos_items.non_form_errors }}
         <div id="nuevos-items">
             {% for fila in nuevos_items %}
-            <fieldset class="panel">{{ fila.as_p }}</fieldset>
+            <fieldset class="panel item-edicion">{{ fila.as_p }}</fieldset>
             {% endfor %}
         </div>
-        <template id="nuevo-item"><fieldset class="panel">{{ nuevos_items.empty_form.as_p }}</fieldset></template>
+        <template id="nuevo-item"><fieldset class="panel item-edicion">{{ nuevos_items.empty_form.as_p }}</fieldset></template>
         <button type="button" class="button outline" id="agregar-item-edicion">+ Agregar ítem</button>
 </section>
 </div>
