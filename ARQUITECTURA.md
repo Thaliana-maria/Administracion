@@ -15,7 +15,7 @@ La separación en aplicaciones permite que cada integrante trabaje en su módulo
 | --- | --- |
 | accounts | Usuarios, autenticación, perfil y límite de intentos de acceso. |
 | expenses | Grupos, integrantes, compras, reparto, ajustes y revisiones. |
-| ledger | Obligaciones, pagos, saldos y transferencias sugeridas. |
+| ledger | Obligaciones, pagos, saldos, transferencias sugeridas y compensaciones. |
 | auditlog | Historial de cambios y datos de anulación. |
 | config | Configuración general y rutas del proyecto. |
 
@@ -41,6 +41,14 @@ Las operaciones de escritura relacionadas utilizan transacciones atómicas. Los 
 
 Los pagos pendientes reservan el importe disponible. Solo los pagos confirmados afectan los saldos. Las objeciones bloquean los pagos asociados a la compra. Las claves únicas de operación evitan repetir registros y la versión de la compra permite detectar ediciones desactualizadas.
 
+## Compensaciones indirectas
+
+El servicio ledger/services/compensaciones.py coordina las solicitudes, reservas, aprobaciones, cancelaciones y confirmación final. simplificacion.py busca una cadena mediante BFS. obligaciones.py descuenta las reservas al registrar pagos y saldos.py contabiliza únicamente compensaciones aplicadas.
+
+Los modelos Compensacion, AprobacionCompensacion y TramoCompensacion conservan el estado, los participantes y las obligaciones originales. El bloqueo del grupo coordina las escrituras de los servicios. La fecha de aplicación se registra cuando el acreedor confirma la recepción. La confirmación no consulta una entidad bancaria.
+
+Las vistas y rutas de expenses conectan estos servicios con el dashboard, pagos y la plantilla de compensaciones. El historial registra las transiciones. La reversión de una compensación aplicada no está implementada.
+
 ## Presentación
 
 Las plantillas HTML, los estilos CSS y JavaScript forman la interfaz. El formulario de compras separa la captura de datos y la asignación de gastos. La vista previa del reparto es orientativa; el servidor realiza el cálculo definitivo.
@@ -53,4 +61,4 @@ En producción se debe configurar una clave secreta propia, desactivar DEBUG, co
 
 ## Validaciones pendientes
 
-La arquitectura conserva el monolito modular. Todavía se requiere ejecutar las migraciones y pruebas completas, comprobar la concurrencia, medir el RNF-04 y revisar las interfaces frente a Figma. La compensación de deudas indirectas no está implementada como operación financiera.
+La arquitectura conserva el monolito modular. Todavía se requiere ejecutar las migraciones y pruebas completas, comprobar la concurrencia, medir el RNF-04 y revisar las interfaces frente a Figma. La compensación indirecta está incorporada en el código, pero su funcionamiento, concurrencia y efecto contable todavía deben comprobarse con pruebas.
