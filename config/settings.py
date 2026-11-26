@@ -19,6 +19,7 @@ if not DEBUG and SECRET_KEY == "clave-solo-para-desarrollo":
 ALLOWED_HOSTS = os.environ.get(
     "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost"
 ).split(",")
+ALLOWED_HOSTS = [nombre.strip() for nombre in ALLOWED_HOSTS if nombre.strip()]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -111,6 +112,8 @@ CACHES = {
 }
 
 if not DEBUG:
+    if not ALLOWED_HOSTS or "*" in ALLOWED_HOSTS:
+        raise ImproperlyConfigured("Configura los dominios permitidos para producción.")
     SECURE_SSL_REDIRECT = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SESSION_COOKIE_SECURE = True
