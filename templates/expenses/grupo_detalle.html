@@ -1,248 +1,42 @@
-﻿
 {% extends "base.html" %}
-
-{% block titulo %}{{ grupo.nombre }} | Detalles del grupo{% endblock %}
-
+{% block titulo %}Integrantes | {{ grupo.nombre }}{% endblock %}
 {% block contenido %}
 <div class="accesos-grupo-movil quick-links"><a href="{% url 'historial_grupo' grupo.id %}">Cambios</a><a href="{% url 'grupos' %}">Mis grupos</a><a href="{% url 'perfil' %}">Mi perfil</a><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="button outline" type="submit">Cerrar sesión</button></form></div>
-<div class="page-heading">
-    <div>
-        <span class="breadcrumb">Mis grupos / Detalles</span>
-        <h1>{{ grupo.nombre }}</h1>
-        <p>Consulta los integrantes, saldos y movimientos del grupo.</p>
-    </div>
 
-    <a class="button primary" href="{% url 'grupo_dashboard' grupo.id %}">
-        Ver resumen
-    </a>
-</div>
-
-<div class="quick-links">
-    {% if not grupo.archivado %}<a class="button primary" href="{% url 'compra_nueva' grupo.id %}">Registrar compra</a>{% endif %}
-
-    {% if puede_gestionar and not grupo.archivado %}
-    <a class="button outline" href="{% url 'integrante_nuevo' grupo.id %}">
-        Agregar integrante
-    </a>
-    {% endif %}
-
-    <a class="button outline" href="{% url 'grupos' %}">
-        Volver a mis grupos
-    </a>
-</div>
-
-<div class="detail-grid">
-    <section class="panel members-panel">
-        <div class="section-heading">
-            <div>
-                <h2>Integrantes y saldos</h2>
-                <p>Balance financiero de los integrantes.</p>
-            </div>
-        </div>
-
-        <div class="table-wrap">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Integrante</th>
-                        <th>Saldo</th>
-                        <th>Estado</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% for usuario, saldo in filas %}
-                    <tr>
-                        <td>
-                            {{ usuario.get_full_name|default:usuario.email }}
-                        </td>
-                        <td>$ {{ saldo|floatformat:2 }}</td>
-                        <td>
-                            {% if saldo > 0 %}
-                                <span class="positive">A favor</span>
-                            {% elif saldo < 0 %}
-                                <span class="negative">Pendiente</span>
-                            {% else %}
-                                Equilibrado
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="3">
-                            No hay integrantes registrados.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <section class="panel feature-panel">
-        <div class="section-heading">
-            <div>
-                <h2>Compras del grupo</h2>
-                <p>Historial de compras registradas.</p>
-            </div>
-        </div>
-
-        <div class="table-wrap">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Descripción</th>
-                        <th>Pagador</th>
-                        <th>Total</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% for compra in compras %}
-                    <tr>
-                        <td>{{ compra.fecha|date:"d/m/Y" }}</td>
-                        <td>
-                            <a href="{% url 'compra_detalle' compra.id %}">
-                                {{ compra.descripcion|default:"Compra" }}
-                            </a>
-                        </td>
-                        <td>
-                            {{ compra.pagador.get_full_name|default:compra.pagador.email }}
-                        </td>
-                        <td>$ {{ compra.total|floatformat:2 }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4">
-                            Aún no hay compras registradas.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        {% if not grupo.archivado %}<div class="quick-links">
-            <a class="button primary" href="{% url 'compra_nueva' grupo.id %}">
-                Registrar nueva compra
-            </a>
-        </div>{% endif %}
-    </section>
-</div>
-
-<section class="panel feature-panel">
-    <div class="section-heading">
-        <div>
-            <h2>Roles y permisos</h2>
-            <p>
-                Los roles se administran de manera independiente
-                para cada grupo.
-            </p>
-        </div>
-    </div>
-
-    {% if puede_gestionar %}
-        <div class="table-wrap">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Integrante</th>
-                        <th>Correo</th>
-                        <th>Rol actual</th>
-                        {% if puede_gestionar %}
-                        <th>Administrar rol</th>
-                        {% endif %}
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% for membresia in membresias %}
-                    <tr>
-                        <td>
-                            {{ membresia.usuario.get_full_name|default:membresia.usuario.email }}
-                        </td>
-
-                        <td>{{ membresia.usuario.email }}</td>
-
-                        <td>
-                            {% if membresia.usuario_id == grupo.creador_id %}
-                                Administrador (creador)
-                            {% elif membresia.rol == "administrador" %}
-                                Administrador
-                            {% else %}
-                                Miembro
-                            {% endif %}
-                        </td>
-
-                        <td>
-                            {% if membresia.usuario_id == grupo.creador_id %}
-                                El creador conserva la administración.
-                            {% elif grupo.archivado %}
-                                Solo lectura
-                            {% else %}
-                                <form
-                                    method="post"
-                                    action="{% url 'cambiar_rol_integrante' grupo.id membresia.usuario_id %}"
-                                >
-                                    {% csrf_token %}
-
-                                    <select name="rol" required>
-                                        <option
-                                            value="miembro"
-                                            {% if membresia.rol == "miembro" %}selected{% endif %}
-                                        >
-                                            Miembro
-                                        </option>
-
-                                        <option
-                                            value="administrador"
-                                            {% if membresia.rol == "administrador" %}selected{% endif %}
-                                        >
-                                            Administrador
-                                        </option>
-                                    </select>
-
-                                    <button class="button outline" type="submit">
-                                        Guardar rol
-                                    </button>
-                                </form>
-                                <form method="post" action="{% url 'retirar_integrante' grupo.id membresia.usuario_id %}" data-confirmacion="¿Deseas retirar este integrante?" data-aviso="Solo se permitirá si sus obligaciones y revisiones están resueltas." data-boton="Retirar integrante">
-                                    {% csrf_token %}
-                                    <button class="button outline" type="submit">Retirar</button>
-                                </form>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4">
-                            No hay membresías registradas.
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% else %}
-        <p>
-            Solo los administradores pueden consultar y modificar
-            la asignación de roles.
-        </p>
-    {% endif %}
+<div class="page-heading"><div><span class="breadcrumb">{{ grupo.nombre }} · Gestión del grupo</span><h1>Integrantes</h1></div></div>
+<div class="detail-grid gestion-integrantes">
+<section class="panel members-panel">
+<h2>Integrantes</h2>
+<div class="table-wrap"><table class="data-table tabla-integrantes">
+<thead><tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Acción</th></tr></thead>
+<tbody>
+{% for membresia in membresias %}
+<tr><td>{{ membresia.usuario.get_full_name|default:membresia.usuario.email }}</td><td>{{ membresia.usuario.email }}</td>
+<td><span class="role-pill {% if membresia.rol == 'administrador' or membresia.usuario_id == grupo.creador_id %}admin-pill{% endif %}">{% if membresia.usuario_id == grupo.creador_id or membresia.rol == 'administrador' %}Administrador{% else %}Miembro{% endif %}</span></td>
+<td>Activo</td><td>
+{% if puede_gestionar and not grupo.archivado and membresia.usuario_id != grupo.creador_id %}
+<form method="post" action="{% url 'cambiar_rol_integrante' grupo.id membresia.usuario_id %}" class="cambio-rol">{% csrf_token %}<select name="rol" aria-label="Rol de {{ membresia.usuario.email }}"><option value="miembro" {% if membresia.rol == 'miembro' %}selected{% endif %}>Miembro</option><option value="administrador" {% if membresia.rol == 'administrador' %}selected{% endif %}>Administrador</option></select><button class="button outline compact">Guardar rol</button></form>
+<form method="post" action="{% url 'retirar_integrante' grupo.id membresia.usuario_id %}" data-confirmacion="¿Deseas retirar este integrante?" data-aviso="Solo se permitirá si sus obligaciones y revisiones están resueltas." data-boton="Retirar integrante">{% csrf_token %}<button class="button danger compact">Retirar</button></form>
+{% else %}—{% endif %}
+</td></tr>
+{% empty %}<tr><td colspan="5">No hay integrantes registrados.</td></tr>{% endfor %}
+</tbody></table></div>
+{% if puede_gestionar and not grupo.archivado %}
+<form class="incorporar-integrante" method="post" action="{% url 'integrante_nuevo' grupo.id %}">{% csrf_token %}<div><label for="correo-integrante">Incorporar integrante (correo)</label><input id="correo-integrante" name="email" type="email" placeholder="nombre@correo.com" required></div><button class="button primary">Incorporar</button></form>
+{% endif %}
+</section>
+<section class="panel permissions-panel"><h2>Permisos por rol</h2>
+<div class="permission-item"><strong>Miembro</strong><p>Registrar compras y pagos, consultar saldos e historial, y editar o anular sus registros cuando las reglas financieras lo permitan.</p></div>
+<div class="permission-item"><strong>Administrador</strong><p>Además, incorporar y retirar integrantes, administrar roles y editar el grupo. La edición y anulación de registros están sujetas a las reglas financieras y a la confirmación de pagos.</p></div>
+<div class="permission-item"><strong>Creador</strong><p>Conserva la administración y puede archivar el grupo cuando no existan obligaciones pendientes.</p></div>
 </section>
 {% if puede_gestionar and not grupo.archivado %}
-<section class="panel feature-panel">
-    <h2>Editar grupo</h2>
-    <form method="post" action="{% url 'editar_grupo' grupo.id %}">
-        {% csrf_token %}
-        {{ formulario_nombre.as_p }}
-        <button class="button primary" type="submit">Guardar cambios</button>
-    </form>
-</section>
+<section class="panel edit-panel"><h2>Editar grupo</h2><form method="post" action="{% url 'editar_grupo' grupo.id %}">{% csrf_token %}{{ formulario_nombre.as_p }}<button class="button primary">Guardar cambios</button></form></section>
 {% endif %}
-{% if not grupo.archivado and user.id != grupo.creador_id %}
-<section class="panel feature-panel"><h2>Salir del grupo</h2><p>Debes resolver tus obligaciones y pagos pendientes antes de salir.</p><form method="post" action="{% url 'retirar_integrante' grupo.id user.id %}" data-confirmacion="¿Deseas salir del grupo?" data-aviso="Debes resolver tus obligaciones y revisiones antes de salir." data-boton="Salir del grupo">{% csrf_token %}<button class="button outline" type="submit">Salir del grupo</button></form></section>
-{% endif %}
-{% if grupo.archivado %}<section class="panel"><h2>Grupo archivado</h2><p>Los registros se conservan para consulta.</p></section>{% elif user.id == grupo.creador_id %}<section class="panel feature-panel"><h2>Archivar grupo</h2><p>Todos los saldos y obligaciones deben estar resueltos. El historial se conservará.</p><form method="post" action="{% url 'archivar_grupo' grupo.id %}" data-confirmacion="¿Deseas archivar este grupo?" data-aviso="El grupo quedará en modo de solo lectura y se conservará su historial financiero." data-boton="Archivar grupo">{% csrf_token %}<label><input type="checkbox" required> Confirmo que deseo archivar este grupo.</label><button class="button outline" type="submit">Archivar grupo</button></form></section>{% endif %}
+{% if grupo.archivado %}<section class="panel"><h2>Grupo archivado</h2><p>Los registros se conservan para consulta.</p></section>
+{% elif user.id == grupo.creador_id %}
+<section class="danger-panel"><h2>Zona de peligro</h2><p>Archivar el grupo conserva las compras, pagos e historial. Solo se permite cuando todas las obligaciones están resueltas.</p><form method="post" action="{% url 'archivar_grupo' grupo.id %}" data-confirmacion="¿Deseas archivar este grupo?" data-aviso="El grupo quedará en modo de solo lectura y se conservará su historial financiero." data-boton="Archivar grupo">{% csrf_token %}<button class="button danger">Archivar grupo</button></form></section>
+{% else %}<section class="panel"><h2>Salir del grupo</h2><p>Debes resolver tus obligaciones y revisiones antes de salir.</p><form method="post" action="{% url 'retirar_integrante' grupo.id user.id %}" data-confirmacion="¿Deseas salir del grupo?" data-aviso="Debes resolver tus obligaciones y revisiones antes de salir." data-boton="Salir del grupo">{% csrf_token %}<button class="button outline">Salir del grupo</button></form></section>{% endif %}
+</div>
+<div class="quick-links"><a class="button outline" href="{% url 'grupos' %}">Mis grupos</a></div>
 {% endblock %}
