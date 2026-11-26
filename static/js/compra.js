@@ -21,6 +21,13 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
+        const impuesto = Number(formulario.elements["impuesto"]?.value || 0);
+        const descuento = Number(formulario.elements["descuento"]?.value || 0);
+        total += impuesto - descuento;
+        const esperado = formulario.elements["total_esperado"];
+        if (esperado) {
+            esperado.setCustomValidity(esperado.value && Math.round(Number(esperado.value) * 100) !== Math.round(total * 100) ? "El total no coincide con los ítems, IVA y descuento." : "");
+        }
         totalElemento.textContent = "$ " + total.toLocaleString(
             "es-CO",
             {
