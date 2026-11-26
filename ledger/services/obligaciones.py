@@ -12,6 +12,7 @@ from expenses.services.permisos import (
     exigir_puede_editar_pago,
 )
 from ledger.models import AplicacionPago, Obligacion, Pago
+from expenses.models import Grupo
 
 
 def _validar_monto(monto):
@@ -105,6 +106,7 @@ def registrar_pago(
     fecha,
     aplicaciones,
 ):
+    Grupo.objects.select_for_update().get(pk=grupo_id)
     exigir_miembro(grupo_id, usuario)
     if not es_administrador(grupo_id, usuario) and usuario.pk != deudor_id:
         raise PermissionDenied("Un miembro solo puede registrar sus propios pagos.")
@@ -251,3 +253,30 @@ def anular_pago(usuario, pago_id):
     pago.save(update_fields=["anulada", "anulada_en", "anulada_por"])
     registrar_cambio(usuario, pago, "anular", detalles)
     return pago
+
+
+@transaction.atomic
+def registrar_pago_directo(usuario, *, grupo_id, deudor_id, acreedor_id, monto, fecha):
+    Grupo.objects.select_for_update().get(pk=grupo_id)
+    exigir_miembro(grupo_id, usuario)
+    if not es_administrador(grupo_id, usuario) and usuario.pk != deudor_id:
+        raise PermissionDenied("Un miembro solo puede registrar sus propios pagos.")
+    monto = _validar_monto(monto)
+    restante = monto
+    aplicaciones = []
+    obligaciones = Obligacion.objects.select_for_update().filter(
+        grupo_id=grupo_id, deudor_id=deudor_id, acreedor_id=acreedor_id,
+        anulada=False, asignacion__anulada=False,
+        asignacion__item__anulada=False, asignacion__item__compra__anulada=False,
+    ).order_by("pk")
+    for obligacion in obligaciones:
+        abono = min(restante, obligacion.saldo_pendiente)
+        if abono > 0:
+            aplicaciones.append((obligacion.pk, abono))
+            restante -= abono
+        if restante == 0:
+            break
+    if restante:
+        raise ValidationError("El valor supera la deuda directa pendiente entre estas personas.")
+    return registrar_pago(usuario, grupo_id=grupo_id, deudor_id=deudor_id,
+        acreedor_id=acreedor_id, monto=monto, fecha=fecha, aplicaciones=aplicaciones)
