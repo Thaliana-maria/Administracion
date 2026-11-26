@@ -21,6 +21,7 @@ from expenses.forms import (
     GrupoForm,
     IntegranteForm,
     ItemForm,
+    PagoForm,
 )
 from expenses.models import Compra, Grupo, Item, Membresia
 from expenses.services.compras import (
@@ -45,6 +46,7 @@ from ledger.models import Pago
 from ledger.services.obligaciones import (
     anular_pago as servicio_anular_pago,
     actualizar_pago,
+    registrar_pago_directo,
 )
 from ledger.services.saldos import calcular_saldos
 from ledger.services.simplificacion import simplificar_deudas
@@ -836,3 +838,26 @@ def historial_grupo(request, grupo_id):
     cambios = Historial.objects.filter(filtro).select_related("usuario").order_by("-fecha", "-pk")
     pagina = Paginator(cambios, 20).get_page(request.GET.get("pagina"))
     return render(request, "expenses/historial.html", {"grupo": grupo, "cambios": pagina})
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def pagos_grupo(request, grupo_id):
+    grupo = _grupo_del_usuario(request, grupo_id)
+    formulario = PagoForm(request.POST or None, miembros=_miembros(grupo),
+        usuario=request.user, administrador=es_administrador(grupo, request.user),
+        initial={"deudor": request.user})
+    if request.method == "POST" and formulario.is_valid():
+        datos = formulario.cleaned_data
+        try:
+            registrar_pago_directo(request.user, grupo_id=grupo.pk,
+                deudor_id=datos["deudor"].pk, acreedor_id=datos["acreedor"].pk,
+                monto=datos["monto"], fecha=datos["fecha"])
+        except ValidationError as error:
+            formulario.add_error(None, error)
+        else:
+            messages.success(request, "Pago registrado correctamente.")
+            return redirect("pagos_grupo", grupo_id=grupo.pk)
+    pagos = grupo.pagos.select_related("deudor", "acreedor").order_by("-fecha", "-pk")
+    pagina = Paginator(pagos, 20).get_page(request.GET.get("pagina"))
+    return render(request, "expenses/pagos.html", {"grupo": grupo, "formulario": formulario, "pagos": pagina})
