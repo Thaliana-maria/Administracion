@@ -74,7 +74,9 @@ def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion
     if fecha is not None:
         compra.fecha = fecha
     if descripcion is not None:
-        compra.descripcion = descripcion
+        if not isinstance(descripcion, str) or len(descripcion.strip()) > 150:
+            raise ValidationError("La descripción de la compra no es válida.")
+        compra.descripcion = descripcion.strip()
     if impuesto is not None or descuento is not None:
         try:
             nuevo_impuesto = Decimal(str(impuesto)) if impuesto is not None else compra.impuesto
@@ -94,8 +96,11 @@ def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion
         compra.descuento = nuevo_descuento
         compra.total = nuevo_total
     if total is not None:
-        nuevo_total = Decimal(str(total))
-        if nuevo_total <= 0 or nuevo_total != nuevo_total.quantize(Decimal("0.01")):
+        try:
+            nuevo_total = Decimal(str(total))
+        except (InvalidOperation, ValueError, TypeError):
+            raise ValidationError("El total indicado no es válido.")
+        if not nuevo_total.is_finite() or nuevo_total <= 0 or nuevo_total > Decimal("9999999999.99") or nuevo_total != nuevo_total.quantize(Decimal("0.01")):
             raise ValidationError("El total debe ser positivo y tener máximo dos decimales.")
         if nuevo_total != compra.total:
             _exigir_sin_abonos(compra)
@@ -152,12 +157,15 @@ def actualizar_item(usuario, item_id, *, valor, asignaciones, descripcion=None):
             raise ValidationError("El valor del ítem debe ser positivo y expresado en pesos enteros.")
     except (InvalidOperation, ValueError, TypeError):
         raise ValidationError("El valor del ítem no es válido.")
-    valores = {
-        int(usuario_id): Decimal(str(monto))
-        for usuario_id, monto in asignaciones.items()
-    }
+    try:
+        valores = {
+            int(usuario_id): Decimal(str(monto))
+            for usuario_id, monto in asignaciones.items()
+        }
+    except (InvalidOperation, ValueError, TypeError, AttributeError):
+        raise ValidationError("Las asignaciones indicadas no son válidas.")
     if not valores or any(
-        monto <= 0 or monto != monto.quantize(Decimal("0.01"))
+        not monto.is_finite() or monto <= 0 or monto > Decimal("9999999999.99") or monto != monto.quantize(Decimal("0.01"))
         for monto in valores.values()
     ):
         raise ValidationError("Cada asignación debe ser positiva y tener máximo dos decimales.")
@@ -183,7 +191,9 @@ def actualizar_item(usuario, item_id, *, valor, asignaciones, descripcion=None):
     compra.save(update_fields=["total"])
     item.valor = valor_nuevo
     if descripcion is not None:
-        item.descripcion = descripcion
+        if not isinstance(descripcion, str) or not descripcion.strip() or len(descripcion.strip()) > 150:
+            raise ValidationError("La descripción del ítem no es válida.")
+        item.descripcion = descripcion.strip()
     item.save(update_fields=["valor", "descripcion"])
     _reemplazar_asignaciones(item, usuario, valores, existentes)
     recalcular_ajustes_compra(compra.pk)
@@ -380,7 +390,9 @@ def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripc
     if fecha is not None:
         compra.fecha = fecha
     if descripcion is not None:
-        compra.descripcion = descripcion
+        if not isinstance(descripcion, str) or len(descripcion.strip()) > 150:
+            raise ValidationError("La descripción de la compra no es válida.")
+        compra.descripcion = descripcion.strip()
     try:
         if impuesto is not None:
             compra.impuesto = Decimal(str(impuesto))
@@ -412,7 +424,7 @@ def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripc
         if any(parte <= 0 for parte in valores.values()):
             raise ValidationError("Cada beneficiario debe recibir al menos un peso.")
         nombre_item = datos.get("descripcion", "")
-        if not isinstance(nombre_item, str) or not nombre_item.strip():
+        if not isinstance(nombre_item, str) or not nombre_item.strip() or len(nombre_item.strip()) > 150:
             raise ValidationError("Cada ítem debe tener una descripción.")
         preparados.append((item, nombre_item.strip(), valor, valores))
         subtotal += valor
