@@ -423,6 +423,11 @@ def editar_compra(request, compra_id):
                      "beneficiarios": [fila.beneficiario_id for fila in item.asignaciones.all() if not fila.anulada]},
         )) for item in items_activos
     ]
+    FormulariosNuevos = forms.formset_factory(EditarItemForm, extra=1, max_num=max(0, 100-len(items_activos)), absolute_max=100, validate_max=True)
+    nuevos_items = FormulariosNuevos(
+        request.POST if editar_items else None, prefix="nuevos",
+        form_kwargs={"grupo": compra.grupo},
+    )
     formulario = EditarCompraForm(
         request.POST if editar_items else None,
         grupo=compra.grupo,
@@ -438,7 +443,8 @@ def editar_compra(request, compra_id):
     if editar_items:
         datos_validos = formulario.is_valid()
         resultados = [formulario_item.is_valid() for _, formulario_item in formularios_items]
-        if datos_validos and resultados and all(resultados):
+        nuevos_validos = nuevos_items.is_valid()
+        if datos_validos and nuevos_validos and all(resultados):
             datos = formulario.cleaned_data
             try:
                 actualizar_items_compra(
@@ -449,6 +455,7 @@ def editar_compra(request, compra_id):
                     impuesto=datos["impuesto"] or Decimal("0"),
                     descuento=datos["descuento"] or Decimal("0"),
                     version=request.POST.get("version_compra", ""),
+                    nuevos=[fila.cleaned_data for fila in nuevos_items if fila.cleaned_data],
                 )
             except ValidationError as error:
                 formulario.add_error(None, error)
@@ -464,6 +471,7 @@ def editar_compra(request, compra_id):
             "formulario": formulario,
             "items_activos": items_activos,
             "formularios_items": formularios_items,
+            "nuevos_items": nuevos_items,
             "version_compra": request.POST.get("version_compra", "") if editar_items else version_compra(compra),
             "subtotal": compra.total - compra.impuesto + compra.descuento,
         },
