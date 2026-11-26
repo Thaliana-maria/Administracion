@@ -21,6 +21,11 @@ def proteger_obligaciones_con_abonos(sender, instance, **kwargs):
     except ObjectDoesNotExist:
         return
 
+    if obligacion.tramos_compensacion.filter(compensacion__estado__in=["pendiente", "aprobada", "aplicada"]).exists():
+        if anteriores and any(getattr(instance, campo) != anteriores[campo] for campo in ("valor_asignado", "beneficiario_id", "item_id", "anulada")):
+            raise ValidationError("No se puede modificar una asignación vinculada a una compensación.")
+        return
+
     if not obligacion.aplicaciones.filter(anulada=False, pago__anulada=False, pago__estado__in=["pendiente", "confirmado"]).exists():
         return
     anulacion_sin_edicion = (
