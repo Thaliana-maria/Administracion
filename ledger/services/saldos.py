@@ -1,7 +1,7 @@
 ﻿from decimal import Decimal
 from django.db.models import Sum
 from expenses.models import AjusteCompra, Grupo, Membresia, Compra, Asignacion
-from ledger.models import Pago
+from ledger.models import Pago, Compensacion
 
 
 def calcular_saldos(grupo):
@@ -56,5 +56,13 @@ def calcular_saldos(grupo):
     for movimiento in pagos_recibidos:
         usuario_id = movimiento["acreedor_id"]
         saldos[usuario_id] = saldos.get(usuario_id, Decimal("0.00")) - (movimiento["total"] or Decimal("0.00"))
+
+    compensaciones = Compensacion.objects.filter(grupo_id=grupo_id, estado="aplicada")
+    for movimiento in compensaciones.values("deudor_id").annotate(total=Sum("monto")):
+        persona = movimiento["deudor_id"]
+        saldos[persona] = saldos.get(persona, Decimal("0.00")) + movimiento["total"]
+    for movimiento in compensaciones.values("acreedor_id").annotate(total=Sum("monto")):
+        persona = movimiento["acreedor_id"]
+        saldos[persona] = saldos.get(persona, Decimal("0.00")) - movimiento["total"]
 
     return saldos
