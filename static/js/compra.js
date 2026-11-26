@@ -161,9 +161,28 @@ document.addEventListener("DOMContentLoaded", function () {
         const vista = document.getElementById("vista-reparto");
         if (vista) vista.hidden = paso !== 2;
         mostrarReparto();
-        formulario.querySelectorAll(".purchase-item [data-campo]").forEach(function (campo) {
-            const asignacion = ["destino", "beneficiario"].includes(campo.dataset.campo);
-            campo.hidden = paso === 1 ? asignacion : !asignacion && campo.dataset.campo !== "descripcion";
+        const datos = document.getElementById("datos-generales");
+        if (datos) datos.hidden = paso === 2;
+        const titulo = document.getElementById("titulo-compra");
+        if (titulo) titulo.textContent = paso === 1 ? "Nueva compra" : "Asignar gastos";
+        formulario.querySelectorAll(".purchase-item").forEach(function (fila) {
+            const descripcion = fila.querySelector('[name$="-descripcion"]').value;
+            const valor = fila.querySelector('[name$="-valor"]').value;
+            const destino = fila.querySelector('[name$="-destino"]');
+            const beneficiario = fila.querySelector('[name$="-beneficiario"]');
+            const resumen = fila.querySelector(".resumen-item");
+            fila.hidden = paso === 2 && !descripcion && !valor;
+            if (resumen) {
+                resumen.hidden = paso !== 2;
+                resumen.querySelector("strong").textContent = descripcion;
+                resumen.querySelector("span").textContent = "$ " + Number(valor || 0).toLocaleString("es-CO");
+            }
+            fila.querySelectorAll("[data-campo]").forEach(function (campo) {
+                const asignacion = ["destino", "beneficiario"].includes(campo.dataset.campo);
+                campo.hidden = paso === 1 ? asignacion : !asignacion;
+                if (campo.dataset.campo === "beneficiario" && paso === 2) campo.hidden = destino.value !== "persona";
+            });
+            beneficiario.required = paso === 2 && !fila.hidden && destino.value === "persona";
         });
         siguiente.hidden = paso !== 1;
         anterior.hidden = paso !== 2;
@@ -182,6 +201,12 @@ document.addEventListener("DOMContentLoaded", function () {
             mostrarPaso(2);
         });
         anterior.addEventListener("click", function () { mostrarPaso(1); });
+        formulario.addEventListener("change", function (evento) {
+            if (paso === 2 && evento.target.name.endsWith("-destino")) mostrarPaso(2);
+        });
+        formulario.addEventListener("invalid", function (evento) {
+            if (evento.target.closest("[hidden]") && paso === 2) mostrarPaso(1);
+        }, true);
         formulario.addEventListener("submit", function (evento) {
             if (paso === 1) {
                 evento.preventDefault();
