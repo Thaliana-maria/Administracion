@@ -296,9 +296,18 @@ def registrar_pago_directo(usuario, *, grupo_id, deudor_id, acreedor_id, monto, 
         anulada=False, asignacion__anulada=False,
         asignacion__item__anulada=False, asignacion__item__compra__anulada=False,
     ).exclude(asignacion__item__compra__revisiones__estado="objetada").order_by("pk")
+    obligaciones = list(obligaciones)
+    reservas = {
+        fila["obligacion_id"]: fila["total"]
+        for fila in AplicacionPago.objects.filter(
+            obligacion_id__in=[obligacion.pk for obligacion in obligaciones],
+            anulada=False, pago__anulada=False,
+            pago__estado__in=["pendiente", "confirmado"],
+        ).values("obligacion_id").annotate(total=Sum("monto"))
+    }
     for obligacion in obligaciones:
-        reservado = obligacion.aplicaciones.filter(anulada=False, pago__anulada=False, pago__estado="pendiente").aggregate(total=Sum("monto"))["total"] or Decimal("0.00")
-        abono = min(restante, obligacion.saldo_pendiente - reservado)
+        reservado = reservas.get(obligacion.pk, Decimal("0.00"))
+        abono = min(restante, obligacion.monto - reservado)
         if abono > 0:
             aplicaciones.append((obligacion.pk, abono))
             restante -= abono
