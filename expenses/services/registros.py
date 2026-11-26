@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
@@ -52,7 +52,7 @@ def _datos_compra(compra):
 
 
 @transaction.atomic
-def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion=None):
+def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion=None, impuesto=None, descuento=None):
     grupo_id = Compra.objects.values_list("grupo_id", flat=True).get(pk=compra_id)
     Grupo.objects.select_for_update().get(pk=grupo_id)
     compra = Compra.objects.select_for_update().get(pk=compra_id)
@@ -65,6 +65,24 @@ def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion
         compra.fecha = fecha
     if descripcion is not None:
         compra.descripcion = descripcion
+    if impuesto is not None or descuento is not None:
+        try:
+            nuevo_impuesto = Decimal(str(impuesto)) if impuesto is not None else compra.impuesto
+            nuevo_descuento = Decimal(str(descuento)) if descuento is not None else compra.descuento
+            for monto in (nuevo_impuesto, nuevo_descuento):
+                if not monto.is_finite() or monto < 0 or monto > Decimal("9999999999.99") or monto != monto.quantize(Decimal("0.01")):
+                    raise ValidationError("El IVA y el descuento deben ser valores válidos no negativos.")
+        except (InvalidOperation, ValueError, TypeError):
+            raise ValidationError("El IVA o el descuento no es válido.")
+        subtotal = Item.objects.filter(compra=compra, anulada=False).aggregate(
+            total=models.Sum("valor")
+        )["total"] or Decimal("0.00")
+        nuevo_total = subtotal + nuevo_impuesto - nuevo_descuento
+        if nuevo_total <= 0 or nuevo_total > Decimal("9999999999.99"):
+            raise ValidationError("El total resultante está fuera del rango permitido.")
+        compra.impuesto = nuevo_impuesto
+        compra.descuento = nuevo_descuento
+        compra.total = nuevo_total
     if total is not None:
         nuevo_total = Decimal(str(total))
         if nuevo_total <= 0 or nuevo_total != nuevo_total.quantize(Decimal("0.01")):
@@ -82,6 +100,8 @@ def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion
     if datos_anteriores != datos_nuevos:
         _exigir_sin_abonos(compra)
         compra.save()
+        if datos_anteriores['impuesto'] != datos_nuevos['impuesto'] or datos_anteriores['descuento'] != datos_nuevos['descuento']:
+            recalcular_ajustes_compra(compra.pk)
         renovar_revisiones(compra, usuario)
         registrar_cambio(
             usuario,
