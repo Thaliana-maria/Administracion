@@ -28,6 +28,10 @@ class GrupoForm(forms.Form):
 
 class IntegranteForm(forms.Form):
     email = forms.EmailField(label="Correo del integrante")
+    rol = forms.ChoiceField(label="Rol", choices=[("miembro", "Miembro"), ("administrador", "Administrador")], initial="miembro", required=False)
+
+    def clean_rol(self):
+        return self.cleaned_data["rol"] or "miembro"
 
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()
