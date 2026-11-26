@@ -1175,3 +1175,15 @@ tbody tr:last-child td {
     .tabla-detalle-compra td, .tabla-detalle-compra th { padding: 8px 4px; }
     .page-heading .quick-links .button { white-space: normal; }
 }
+
+.gestion-integrantes { grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr); }
+.tabla-integrantes { white-space: normal; }
+.tabla-integrantes td { overflow-wrap: anywhere; vertical-align: middle; }
+.cambio-rol { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 5px; }
+.cambio-rol select, .incorporar-integrante input { border: 1px solid var(--line); border-radius: 6px; padding: 8px; min-width: 0; background: white; }
+.incorporar-integrante { display: flex; gap: 8px; align-items: end; margin-top: 14px; }
+.incorporar-integrante div { flex: 1; min-width: 0; }
+.incorporar-integrante label { display: block; font-size: 11px; margin-bottom: 5px; }
+.incorporar-integrante input { width: 100%; }
+@media (max-width: 950px) { .gestion-integrantes { grid-template-columns: 1fr; } }
+@media (max-width: 650px) { .incorporar-integrante { flex-direction: column; align-items: stretch; } .tabla-integrantes { min-width: 440px; } }
