@@ -169,6 +169,7 @@ def confirmar_compensacion(usuario, grupo_id, compensacion_id):
     if cadena[-1] != compensacion.acreedor_id or aprobados != set(cadena) or not aprobados.issubset(integrantes):
         raise ValidationError("Faltan aprobaciones válidas de los participantes.")
     compensacion.estado = "aplicada"
-    compensacion.save(update_fields=["estado"])
-    registrar_cambio(usuario, compensacion, "aplicar", {"monto": str(compensacion.monto), "cadena": cadena, "fecha_confirmacion": timezone.now().isoformat()})
+    compensacion.fecha_aplicacion = timezone.now()
+    compensacion.save(update_fields=["estado", "fecha_aplicacion"])
+    registrar_cambio(usuario, compensacion, "aplicar", {"monto": str(compensacion.monto), "cadena": cadena, "fecha_confirmacion": compensacion.fecha_aplicacion.isoformat()})
     return compensacion
