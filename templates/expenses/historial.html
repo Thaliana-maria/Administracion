@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block titulo %}Cambios | {{ grupo.nombre }}{% endblock %}
 {% block contenido %}
-<div class="page-heading"><div><span class="breadcrumb">{{ grupo.nombre }}</span><h1>Historial de cambios</h1></div></div>
-<section class="panel feature-panel">
+<div class="page-heading"><div><span class="breadcrumb">Ediciones y anulaciones</span><h1>Historial de cambios</h1></div></div>
+<section class="panel feature-panel pantalla-cambios">
 <div class="table-wrap"><table class="data-table tabla-compras">
 <thead><tr><th>Fecha y hora</th><th>Usuario</th><th>Registro</th><th>Acción</th><th>Valor anterior</th><th>Valor nuevo</th></tr></thead>
 <tbody>
@@ -10,6 +10,11 @@
 <tr><td data-etiqueta="Fecha">{{ cambio.fecha|date:"d/m/Y H:i" }}</td><td data-etiqueta="Usuario">{{ cambio.usuario.get_full_name|default:cambio.usuario.email }}</td><td data-etiqueta="Registro">{{ cambio.tipo_registro }} #{{ cambio.id_registro }}</td><td data-etiqueta="Acción">{{ cambio.accion }}</td><td data-etiqueta="Anterior">{{ cambio.detalles.antes|default_if_none:"—" }}</td><td data-etiqueta="Nuevo">{{ cambio.detalles.despues|default_if_none:"—" }}</td></tr>
 {% empty %}<tr><td colspan="6">No hay cambios registrados.</td></tr>{% endfor %}
 </tbody></table></div>
+<div class="tarjetas-cambios">
+{% for cambio in cambios %}
+<article class="tarjeta-cambio"><div class="encabezado-cambio"><span class="etiqueta-cambio {% if cambio.accion == 'anular' %}etiqueta-anulacion{% endif %}">{% if cambio.accion == "anular" %}Anulación{% elif cambio.accion == "editar" %}Edición{% else %}{{ cambio.accion|capfirst }}{% endif %}</span><small>{{ cambio.fecha|date:"d M H:i" }}</small></div><strong>{{ cambio.tipo_registro|capfirst }} #{{ cambio.id_registro }}</strong><p>{{ cambio.detalles.antes|default_if_none:"—" }} → {{ cambio.detalles.despues|default_if_none:"—" }}</p><small>{{ cambio.usuario.get_full_name|default:cambio.usuario.email }}</small></article>
+{% empty %}<p>No hay cambios registrados.</p>{% endfor %}
+</div>
 <div class="quick-links">
 {% if cambios.has_previous %}<a class="button outline" href="?pagina={{ cambios.previous_page_number }}">Anterior</a>{% endif %}
 <span>Página {{ cambios.number }} de {{ cambios.paginator.num_pages }}</span>
