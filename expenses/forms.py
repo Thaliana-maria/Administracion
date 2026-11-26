@@ -119,9 +119,9 @@ class EditarCompraForm(forms.Form):
 class EditarItemForm(forms.Form):
     descripcion = forms.CharField(max_length=150, label="Descripción")
     valor = forms.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        min_value=0.01,
+        max_digits=10,
+        decimal_places=0,
+        min_value=1,
         label="Valor"
     )
     beneficiarios = forms.ModelMultipleChoiceField(
