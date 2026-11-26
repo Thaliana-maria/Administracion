@@ -18,27 +18,27 @@
             ¿Quién gastó esto?
         </a>
 
-        <nav class="side-nav" aria-label="Navegación principal">
+        <nav class="side-nav {% if grupo or compra.grupo or pago.grupo or item.compra.grupo %}nav-grupo{% endif %}" aria-label="Navegación principal">
             {% if grupo or compra.grupo or pago.grupo or item.compra.grupo %}
             {% firstof grupo.id compra.grupo_id pago.grupo_id item.compra.grupo_id as grupo_actual %}
             <a class="{% if request.resolver_match.url_name == 'grupo_dashboard' %}active{% endif %}" href="{% url 'grupo_dashboard' grupo_actual %}">Resumen</a>
             <a class="{% if request.resolver_match.url_name == 'compras_lista' or compra or item or request.resolver_match.url_name == 'compra_nueva' %}active{% endif %}" href="{% url 'compras_lista' grupo_actual %}">Compras</a>
             <a class="{% if request.resolver_match.url_name == 'pagos_grupo' or pago %}active{% endif %}" href="{% url 'pagos_grupo' grupo_actual %}">Pagos</a>
             <a class="{% if request.resolver_match.url_name == 'grupo_detalle' or request.resolver_match.url_name == 'integrante_nuevo' %}active{% endif %}" href="{% url 'grupo_detalle' grupo_actual %}">Integrantes</a>
-            <a class="{% if request.resolver_match.url_name == 'historial_grupo' %}active{% endif %}" href="{% url 'historial_grupo' grupo_actual %}">Cambios</a>
+            <a class="nav-secundaria {% if request.resolver_match.url_name == 'historial_grupo' %}active{% endif %}" href="{% url 'historial_grupo' grupo_actual %}">Cambios</a>
             {% endif %}
             <a href="{% url 'inicio' %}"
-               class="{% if request.resolver_match.url_name == 'inicio' %}active{% endif %}">
+               class="nav-secundaria {% if request.resolver_match.url_name == 'inicio' %}active{% endif %}">
                 Inicio
             </a>
 
             <a href="{% url 'grupos' %}"
-               class="{% if request.resolver_match.url_name == 'grupos' %}active{% endif %}">
+               class="nav-secundaria {% if request.resolver_match.url_name == 'grupos' %}active{% endif %}">
                 Mis grupos
             </a>
 
             <a href="{% url 'perfil' %}"
-               class="{% if request.resolver_match.url_name == 'perfil' or request.resolver_match.url_name == 'cambiar_contrasena' %}active{% endif %}">
+               class="nav-secundaria {% if request.resolver_match.url_name == 'perfil' or request.resolver_match.url_name == 'cambiar_contrasena' %}active{% endif %}">
                 Mi perfil
             </a>
         </nav>
