@@ -116,7 +116,7 @@ def lista_grupos(request):
     return render(
         request,
         "expenses/grupos_lista.html",
-        {"grupos": grupos},
+        {"grupos": grupos, "formulario": GrupoForm()},
     )
 
 
