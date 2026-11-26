@@ -24,6 +24,7 @@
             <a href="{% url 'grupo_dashboard' grupo_actual %}">Resumen</a>
             <a href="{% url 'compras_lista' grupo_actual %}">Compras</a>
             <a href="{% url 'grupo_detalle' grupo_actual %}">Integrantes</a>
+            <a href="{% url 'historial_grupo' grupo_actual %}">Cambios</a>
             {% endif %}
             <a href="{% url 'inicio' %}"
                class="{% if request.resolver_match.url_name == 'inicio' %}active{% endif %}">
