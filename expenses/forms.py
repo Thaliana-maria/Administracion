@@ -161,8 +161,8 @@ class EditarPagoForm(forms.Form):
 
 class PagoForm(forms.Form):
     clave_operacion = forms.UUIDField(widget=forms.HiddenInput)
-    deudor = forms.ModelChoiceField(queryset=Usuario.objects.none(), label="Quién pagó")
-    acreedor = forms.ModelChoiceField(queryset=Usuario.objects.none(), label="Quién recibió")
+    deudor = forms.ModelChoiceField(queryset=Usuario.objects.none(), label="Paga")
+    acreedor = forms.ModelChoiceField(queryset=Usuario.objects.none(), label="Recibe")
     monto = forms.DecimalField(label="Valor (COP)", max_digits=12, decimal_places=2, min_value=0.01)
     fecha = forms.DateField(label="Fecha", initial=timezone.localdate, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
 
