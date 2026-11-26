@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
+from django.db.models.functions import Lower
 
 
 class UsuarioManager(BaseUserManager):
@@ -26,6 +27,9 @@ class Usuario(AbstractUser):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
     objects = UsuarioManager()
+
+    class Meta(AbstractUser.Meta):
+        constraints = [models.UniqueConstraint(Lower("email"), name="usuario_correo_unico_minusculas")]
 
     def __str__(self):
         return self.email
