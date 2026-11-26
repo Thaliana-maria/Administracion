@@ -206,7 +206,7 @@
                                         Guardar rol
                                     </button>
                                 </form>
-                                <form method="post" action="{% url 'retirar_integrante' grupo.id membresia.usuario_id %}">
+                                <form method="post" action="{% url 'retirar_integrante' grupo.id membresia.usuario_id %}" data-confirmacion="¿Deseas retirar este integrante?" data-aviso="Solo se permitirá si sus obligaciones y revisiones están resueltas." data-boton="Retirar integrante">
                                     {% csrf_token %}
                                     <button class="button outline" type="submit">Retirar</button>
                                 </form>
@@ -241,7 +241,7 @@
 </section>
 {% endif %}
 {% if not grupo.archivado and user.id != grupo.creador_id %}
-<section class="panel feature-panel"><h2>Salir del grupo</h2><p>Debes resolver tus obligaciones y pagos pendientes antes de salir.</p><form method="post" action="{% url 'retirar_integrante' grupo.id user.id %}">{% csrf_token %}<button class="button outline" type="submit">Salir del grupo</button></form></section>
+<section class="panel feature-panel"><h2>Salir del grupo</h2><p>Debes resolver tus obligaciones y pagos pendientes antes de salir.</p><form method="post" action="{% url 'retirar_integrante' grupo.id user.id %}" data-confirmacion="¿Deseas salir del grupo?" data-aviso="Debes resolver tus obligaciones y revisiones antes de salir." data-boton="Salir del grupo">{% csrf_token %}<button class="button outline" type="submit">Salir del grupo</button></form></section>
 {% endif %}
-{% if grupo.archivado %}<section class="panel"><h2>Grupo archivado</h2><p>Los registros se conservan para consulta.</p></section>{% elif user.id == grupo.creador_id %}<section class="panel feature-panel"><h2>Archivar grupo</h2><p>Todos los saldos y obligaciones deben estar resueltos. El historial se conservará.</p><form method="post" action="{% url 'archivar_grupo' grupo.id %}">{% csrf_token %}<label><input type="checkbox" required> Confirmo que deseo archivar este grupo.</label><button class="button outline" type="submit">Archivar grupo</button></form></section>{% endif %}
+{% if grupo.archivado %}<section class="panel"><h2>Grupo archivado</h2><p>Los registros se conservan para consulta.</p></section>{% elif user.id == grupo.creador_id %}<section class="panel feature-panel"><h2>Archivar grupo</h2><p>Todos los saldos y obligaciones deben estar resueltos. El historial se conservará.</p><form method="post" action="{% url 'archivar_grupo' grupo.id %}" data-confirmacion="¿Deseas archivar este grupo?" data-aviso="El grupo quedará en modo de solo lectura y se conservará su historial financiero." data-boton="Archivar grupo">{% csrf_token %}<label><input type="checkbox" required> Confirmo que deseo archivar este grupo.</label><button class="button outline" type="submit">Archivar grupo</button></form></section>{% endif %}
 {% endblock %}
