@@ -35,10 +35,11 @@
             </thead>
 
             <tbody>
-                {% for usuario, saldo in filas_saldos %}
+                {% for usuario, saldo, porcentaje in barras_saldos %}
                 <tr>
                     <td>
                         {{ usuario.get_full_name|default:usuario.email }}
+                        <div class="barra-saldo"><span class="{% if saldo < 0 %}barra-negativa{% endif %}" style="width: {{ porcentaje }}%"></span></div>
                     </td>
                     <td class="{% if saldo > 0 %}positive{% elif saldo < 0 %}negative{% endif %}">$ {{ saldo|floatformat:2 }}</td>
                     <td>
