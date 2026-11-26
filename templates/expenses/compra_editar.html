@@ -54,16 +54,25 @@
     </form>
 </section>
 <section class="panel feature-panel">
-    <h2>Ítems de la compra</h2>
-    <div class="table-wrap">
-        <table class="data-table tabla-compras">
-            <thead><tr><th>Descripción</th><th>Valor</th><th>Acción</th></tr></thead>
-            <tbody>
-                {% for item in items_activos %}
-                <tr><td data-etiqueta="Descripción">{{ item.descripcion }}</td><td data-etiqueta="Valor">$ {{ item.valor|floatformat:2 }}</td><td data-etiqueta="Acción"><a class="button outline" href="{% url 'editar_item' item.pk %}">Editar ítem</a></td></tr>
-                {% empty %}<tr><td colspan="3">No hay ítems activos.</td></tr>{% endfor %}
-            </tbody>
-        </table>
-    </div>
+    <h2>Editar ítems de la compra</h2>
+    <p>Guarda todos los cambios de los ítems en una sola operación.</p>
+    <form method="post" class="feature-form">
+        {% csrf_token %}
+        <input type="hidden" name="accion" value="editar_items">
+        {% for item, formulario_item in formularios_items %}
+        <fieldset class="panel">
+            <legend>Ítem {{ forloop.counter }}</legend>
+            {{ formulario_item.as_p }}
+        </fieldset>
+        {% empty %}
+        <p>No hay ítems activos.</p>
+        {% endfor %}
+        {% if formularios_items %}
+        <div class="quick-links">
+            <button type="submit" class="button primary">Guardar todos los ítems</button>
+            <a class="button outline" href="{% url 'compra_detalle' compra.pk %}">Cancelar</a>
+        </div>
+        {% endif %}
+    </form>
 </section>
 {% endblock %}
