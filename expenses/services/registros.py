@@ -350,7 +350,7 @@ def anular_compra(usuario, compra_id):
 
 
 @transaction.atomic
-def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripcion=None, pagador_id=None, impuesto=None, descuento=None, version=None):
+def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripcion=None, pagador_id=None, impuesto=None, descuento=None, version=None, nuevos=None):
     grupo_id = Compra.objects.values_list("grupo_id", flat=True).get(pk=compra_id)
     Grupo.objects.select_for_update().get(pk=grupo_id)
     compra = Compra.objects.select_for_update().get(pk=compra_id)
@@ -361,7 +361,8 @@ def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripc
         raise ValidationError("Otra persona modificó la compra. Vuelve a abrirla antes de guardar.")
     _exigir_sin_abonos(compra)
     items = {item.pk: item for item in compra.items.select_for_update().filter(anulada=False)}
-    if not cambios or len(cambios) > 100 or set(cambios) != set(items):
+    nuevos = nuevos or []
+    if len(cambios) + len(nuevos) > 100 or set(cambios) != set(items):
         raise ValidationError("Los ítems no coinciden con la compra actual.")
     anterior = _datos_compra(compra)
     if pagador_id is not None:
@@ -382,9 +383,9 @@ def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripc
     preparados = []
     retirados = []
     subtotal = Decimal("0")
-    for identificador, datos in cambios.items():
-        item = items[identificador]
-        if datos.get("retirar"):
+    for identificador, datos in list(cambios.items()) + [(None, datos) for datos in nuevos]:
+        item = items.get(identificador)
+        if item is not None and datos.get("retirar"):
             retirados.append(item)
             continue
         valor = datos["valor"]
@@ -408,6 +409,12 @@ def actualizar_items_compra(usuario, compra_id, cambios, *, fecha=None, descripc
     if hubo_cambios:
         compra.save()
     for item, descripcion, valor, valores in preparados:
+        if item is None:
+            item = Item.objects.create(compra=compra, descripcion=descripcion, valor=valor)
+            _reemplazar_asignaciones(item, usuario, valores)
+            registrar_cambio(usuario, item, "crear", {"despues": {"descripcion": descripcion, "valor": str(valor)}})
+            hubo_cambios = True
+            continue
         existentes = list(item.asignaciones.filter(anulada=False))
         anteriores = {fila.beneficiario_id: fila.valor_asignado for fila in existentes}
         if item.descripcion == descripcion and item.valor == valor and anteriores == valores and anterior['pagador_id'] == compra.pagador_id:
