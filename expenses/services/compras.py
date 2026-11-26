@@ -227,6 +227,9 @@ def registrar_compra(
     descripcion,
     items,
     registrado_por=None,
+    impuesto=0,
+    descuento=0,
+    total_esperado=None,
 ):
     """
     Registra una compra con sus ítems y asignaciones.
@@ -275,7 +278,22 @@ def registrar_compra(
         Decimal("0"),
     )
 
-    if total > Decimal("9999999999"):
+    from expenses.services.ajustes import recalcular_ajustes_compra
+
+    try:
+        impuesto = Decimal(str(impuesto))
+        descuento = Decimal(str(descuento))
+        for valor in (impuesto, descuento):
+            if not valor.is_finite() or valor < 0 or valor > Decimal("9999999999.99") or valor != valor.quantize(Decimal("0.01")):
+                raise ValidationError("El IVA y el descuento deben ser valores monetarios válidos.")
+        total += impuesto - descuento
+        if total_esperado is not None and total != Decimal(str(total_esperado)):
+            raise ValidationError("El total indicado no coincide con los ítems, el IVA y el descuento.")
+    except (InvalidOperation, ValueError, TypeError):
+        raise ValidationError("Los valores de la compra no son válidos.")
+    if total <= 0:
+        raise ValidationError("El total de la compra debe ser positivo.")
+    if total > Decimal("9999999999.99"):
         raise ValidationError("El total de la compra supera el máximo permitido.")
 
     compra = Compra.objects.create(
@@ -284,6 +302,8 @@ def registrar_compra(
         registrado_por=registrado_por,
         fecha=fecha,
         total=total,
+        impuesto=impuesto,
+        descuento=descuento,
         descripcion=(descripcion or "").strip(),
     )
 
@@ -317,6 +337,9 @@ def registrar_compra(
                     beneficiario_id=beneficiario_id,
                     valor_asignado=parte,
                 )
+
+    if impuesto or descuento:
+        recalcular_ajustes_compra(compra.pk)
 
     Historial.objects.create(
         usuario=registrado_por,
