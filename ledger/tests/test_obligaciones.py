@@ -9,7 +9,7 @@ from auditlog.models import Historial
 from expenses.models import Asignacion, Compra, Grupo, Item, Membresia
 from expenses.services.registros import anular_compra, actualizar_asignaciones
 from ledger.models import AplicacionPago, Pago
-from ledger.services.obligaciones import anular_pago, registrar_pago
+from ledger.services.obligaciones import anular_pago, registrar_pago, registrar_pago_directo, responder_pago
 from ledger.services.saldos import calcular_saldos
 
 
@@ -170,3 +170,40 @@ class PruebasObligacionesYPagos(TestCase):
         pago.refresh_from_db()
         self.assertFalse(pago.anulada)
         self.assertEqual(Pago.objects.count(), 1)
+
+
+    def test_pago_pendiente_reserva_saldo_sin_modificarlo(self):
+        pago = self.registrar_abono("8000.00", estado="pendiente")
+        self.assertEqual(self.obligacion.saldo_pendiente, Decimal("10000.00"))
+        with self.assertRaises(ValidationError):
+            self.registrar_abono("2000.01", estado="pendiente")
+        responder_pago(self.acreedor, self.grupo.pk, pago.pk, True)
+        pago.refresh_from_db()
+        self.assertEqual(pago.estado, "confirmado")
+        self.assertEqual(self.obligacion.saldo_pendiente, Decimal("2000.00"))
+
+    def test_rechazo_libera_reserva_del_pago(self):
+        pago = self.registrar_abono("10000.00", estado="pendiente")
+        responder_pago(self.acreedor, self.grupo.pk, pago.pk, False)
+        pago.refresh_from_db()
+        self.assertEqual(pago.estado, "rechazado")
+        nuevo = registrar_pago_directo(
+            self.deudor, grupo_id=self.grupo.pk, deudor_id=self.deudor.pk,
+            acreedor_id=self.acreedor.pk, monto="10000.00", fecha=date.today(),
+        )
+        self.assertEqual(nuevo.estado, "pendiente")
+        self.assertEqual(self.obligacion.saldo_pendiente, Decimal("10000.00"))
+
+    def test_deudor_no_puede_confirmar_su_pago(self):
+        pago = self.registrar_abono(estado="pendiente")
+        with self.assertRaises(PermissionDenied):
+            responder_pago(self.deudor, self.grupo.pk, pago.pk, True)
+        pago.refresh_from_db()
+        self.assertEqual(pago.estado, "pendiente")
+
+    def test_pago_no_se_confirma_dos_veces(self):
+        pago = self.registrar_abono(estado="pendiente")
+        responder_pago(self.acreedor, self.grupo.pk, pago.pk, True)
+        with self.assertRaises(ValidationError):
+            responder_pago(self.acreedor, self.grupo.pk, pago.pk, True)
+        self.assertEqual(self.obligacion.saldo_pendiente, Decimal("8000.00"))
