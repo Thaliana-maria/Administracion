@@ -1187,3 +1187,24 @@ tbody tr:last-child td {
 .incorporar-integrante input { width: 100%; }
 @media (max-width: 950px) { .gestion-integrantes { grid-template-columns: 1fr; } }
 @media (max-width: 650px) { .incorporar-integrante { flex-direction: column; align-items: stretch; } .tabla-integrantes { min-width: 440px; } }
+
+
+.pantalla-compensaciones { display: grid; gap: 14px; }
+.tarjeta-compensacion { border: 1px solid var(--line); border-radius: 9px; padding: 16px; min-width: 0; background: white; overflow-wrap: anywhere; }
+.tarjeta-compensacion h3 { margin: 0 0 8px; }
+.resumen-compensacion { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.resumen-compensacion strong { color: #10596C; font-size: 18px; }
+.estado-compensacion { background: #D8EBF1; color: #10596C; border-radius: 12px; padding: 4px 9px; font-size: 11px; font-weight: 700; }
+.estado-compensacion.estado-rechazada, .estado-compensacion.estado-cancelada { background: #FBE5DB; color: #BF4824; }
+.tarjeta-compensacion form { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.tabla-compensacion { white-space: normal; }
+@media (max-width: 650px) {
+    .pantalla-compensaciones { padding: 12px; }
+    .tarjeta-compensacion { padding: 12px; }
+    .tarjeta-compensacion h3 { font-size: 15px; }
+    .tabla-compensacion thead { display: none; }
+    .tabla-compensacion, .tabla-compensacion tbody, .tabla-compensacion tr, .tabla-compensacion td { display: block; width: 100%; }
+    .tabla-compensacion tr { border-bottom: 1px solid var(--line); padding: 8px 0; }
+    .tabla-compensacion td { padding: 4px 0; border: 0; }
+    .tarjeta-compensacion form .button { flex: 1 1 110px; white-space: normal; }
+}
