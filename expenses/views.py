@@ -444,6 +444,8 @@ def editar_compra(request, compra_id):
         {
             "compra": compra,
             "formulario": formulario,
+            "items_activos": compra.items.filter(anulada=False),
+            "subtotal": compra.total - compra.impuesto + compra.descuento,
         },
     )
 
