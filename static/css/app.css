@@ -980,3 +980,7 @@ tbody tr:last-child td {
 .barra-saldo .barra-negativa {
     background: var(--danger);
 }
+
+.purchase-form [hidden] {
+    display: none !important;
+}
