@@ -114,6 +114,8 @@ def registrar_pago(
     if not es_administrador(grupo_id, usuario) and usuario.pk != deudor_id:
         raise PermissionDenied("Un miembro solo puede registrar sus propios pagos.")
 
+    if estado not in ("pendiente", "confirmado"):
+        raise ValidationError("Estado inicial del pago no válido.")
     monto = _validar_monto(monto)
     if deudor_id == acreedor_id:
         raise ValidationError("El deudor y el acreedor deben ser personas distintas.")
