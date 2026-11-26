@@ -19,6 +19,12 @@
         </a>
 
         <nav class="side-nav">
+            {% if grupo or compra.grupo or pago.grupo or item.compra.grupo %}
+            {% firstof grupo.id compra.grupo_id pago.grupo_id item.compra.grupo_id as grupo_actual %}
+            <a href="{% url 'grupo_dashboard' grupo_actual %}">Resumen</a>
+            <a href="{% url 'compras_lista' grupo_actual %}">Compras</a>
+            <a href="{% url 'grupo_detalle' grupo_actual %}">Integrantes</a>
+            {% endif %}
             <a href="{% url 'inicio' %}"
                class="{% if request.resolver_match.url_name == 'inicio' %}active{% endif %}">
                 Inicio
