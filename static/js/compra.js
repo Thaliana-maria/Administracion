@@ -33,5 +33,31 @@ document.addEventListener("DOMContentLoaded", function () {
     formulario.addEventListener("input", calcularTotal);
     formulario.addEventListener("change", calcularTotal);
 
+    const agregar = document.getElementById("agregar-item");
+    const plantilla = document.getElementById("plantilla-item");
+    const cantidad = formulario.querySelector('input[name$="-TOTAL_FORMS"]');
+    if (agregar && plantilla && cantidad) {
+        agregar.addEventListener("click", function () {
+            const indice = Number(cantidad.value);
+            if (indice >= 100) return;
+            const contenido = plantilla.innerHTML.replace(/__prefix__/g, String(indice));
+            formulario.querySelector(".purchase-items").insertAdjacentHTML("beforeend", contenido);
+            cantidad.value = indice + 1;
+            const nuevo = formulario.querySelector(".purchase-items").lastElementChild;
+            nuevo.querySelector("legend").textContent = "Ítem " + (indice + 1);
+            agregar.disabled = indice + 1 >= 100;
+            calcularTotal();
+        });
+    }
+    formulario.addEventListener("submit", function () {
+        formulario.querySelectorAll('button[type="submit"]').forEach(function (boton) {
+            boton.disabled = true;
+        });
+    });
+    window.addEventListener("pageshow", function () {
+        formulario.querySelectorAll('button[type="submit"]').forEach(function (boton) {
+            boton.disabled = false;
+        });
+    });
     calcularTotal();
 });
