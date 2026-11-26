@@ -755,6 +755,7 @@ def dashboard_grupo(request, grupo_id):
     )[:5]
 
     transferencias_sugeridas = []
+    pagos_disponibles = []
     error_simplificacion = None
 
     try:
@@ -773,9 +774,15 @@ def dashboard_grupo(request, grupo_id):
             usuario.pk: usuario
             for usuario, _ in filas_saldos
         }
+        ids_usuarios.update(persona for pareja in disponibles for persona in pareja)
         usuarios.update(
             Usuario.objects.in_bulk(ids_usuarios - usuarios.keys())
         )
+        pagos_disponibles = [
+            {"deudor": usuarios[deudor], "acreedor": usuarios[acreedor], "monto": monto}
+            for (deudor, acreedor), monto in disponibles.items()
+            if deudor in usuarios and acreedor in usuarios
+        ]
 
         for transferencia in plan:
             deudor = usuarios.get(
@@ -814,6 +821,7 @@ def dashboard_grupo(request, grupo_id):
             "barras_saldos": barras_saldos,
             "ultimas_compras": ultimas_compras,
             "transferencias_sugeridas": transferencias_sugeridas,
+            "pagos_disponibles": pagos_disponibles,
             "error_simplificacion": error_simplificacion,
             "puede_gestionar": es_administrador(
                 grupo,
