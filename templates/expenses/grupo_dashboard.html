@@ -78,6 +78,7 @@
         no modifican obligaciones y no cambian los saldos del grupo.
     </p>
 
+    <a class="button outline" href="{% url 'compensaciones_grupo' grupo.id %}">Ver compensaciones</a>
     {% if error_simplificacion %}
         <p class="message error">
             No fue posible calcular las transferencias:
@@ -107,7 +108,16 @@
                             $ {{ transferencia.monto|floatformat:2 }}
                             {% if transferencia.registrable and user.id == transferencia.deudor.id or transferencia.registrable and puede_gestionar %}
                             <a class="button outline" href="{% url 'pagos_grupo' grupo.id %}?deudor={{ transferencia.deudor.id }}&amp;acreedor={{ transferencia.acreedor.id }}&amp;monto={{ transferencia.monto|stringformat:'f' }}">Registrar pago</a>
-                            {% elif not transferencia.registrable %}<small>Esta sugerencia requiere compensar obligaciones entre varias personas. No puede registrarse como pago directo. Consulta los pagos directos disponibles.</small>{% endif %}
+                            {% elif transferencia.compensable and user.id == transferencia.deudor.id or transferencia.compensable and puede_gestionar %}
+                            <form method="post" action="{% url 'solicitar_compensacion' grupo.id %}">{% csrf_token %}
+                                <input type="hidden" name="deudor" value="{{ transferencia.deudor.id }}">
+                                <input type="hidden" name="acreedor" value="{{ transferencia.acreedor.id }}">
+                                <input type="hidden" name="monto" value="{{ transferencia.monto|stringformat:'f' }}">
+                                <input type="hidden" name="clave" value="{{ transferencia.clave }}">
+                                <button class="button outline" type="submit">Solicitar compensación</button>
+                            </form>
+                            <small>Requiere la aprobación de todos los participantes.</small>
+                            {% elif not transferencia.registrable %}<small>Consulta los pagos directos disponibles o las solicitudes existentes.</small>{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -125,7 +135,7 @@
 </div>
 <section class="panel feature-panel">
     <h2>Pagos directos disponibles</h2>
-    <p>Alternativas de pago sobre obligaciones reales, descontando abonos pendientes y confirmados. No necesitas realizar una transferencia indirecta para resolver tus deudas.</p>
+    <p>Alternativas de pago sobre obligaciones reales, descontando abonos y reservas de compensación. No necesitas realizar una transferencia indirecta para resolver tus deudas.</p>
     <div class="table-wrap">
         <table class="data-table">
             <thead><tr><th>Deudor</th><th>Acreedor</th><th>Valor disponible</th><th>Acción</th></tr></thead>
@@ -167,7 +177,7 @@
 
             <tbody>
                 {% for movimiento in movimientos %}
-                <tr><td>{% if movimiento.compra_id %}<a href="{% url 'compra_detalle' movimiento.compra_id %}">{{ movimiento.descripcion }}</a>{% else %}<a href="{% url 'pagos_grupo' grupo.id %}">{{ movimiento.descripcion }}</a>{% endif %}<small class="tipo-movimiento">{{ movimiento.tipo }}</small></td><td>{{ movimiento.fecha|date:"d/m/Y" }}</td><td>{{ movimiento.persona.get_full_name|default:movimiento.persona.email }}</td><td>$ {{ movimiento.valor|floatformat:2 }}</td></tr>
+                <tr><td>{% if movimiento.compra_id %}<a href="{% url 'compra_detalle' movimiento.compra_id %}">{{ movimiento.descripcion }}</a>{% elif movimiento.compensacion_id %}<a href="{% url 'compensaciones_grupo' grupo.id %}">{{ movimiento.descripcion }}</a>{% else %}<a href="{% url 'pagos_grupo' grupo.id %}">{{ movimiento.descripcion }}</a>{% endif %}<small class="tipo-movimiento">{{ movimiento.tipo }}</small></td><td>{{ movimiento.fecha|date:"d/m/Y" }}</td><td>{{ movimiento.persona.get_full_name|default:movimiento.persona.email }}</td><td>$ {{ movimiento.valor|floatformat:2 }}</td></tr>
                 {% empty %}<tr><td colspan="4">Todavía no hay movimientos registrados.</td></tr>{% endfor %}
             </tbody>
         </table>
