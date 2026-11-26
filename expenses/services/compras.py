@@ -67,6 +67,9 @@ def agregar_integrante(grupo, usuario, quien_agrega):
     if grupo_bloqueado is None:
         raise ValidationError("El grupo indicado no existe.")
 
+    if grupo_bloqueado.archivado:
+        raise ValidationError("El grupo está archivado.")
+
     if not es_administrador(grupo_bloqueado, quien_agrega):
         raise ValidationError(
             "Solo los administradores del grupo pueden agregar integrantes."
@@ -243,6 +246,9 @@ def registrar_compra(
 
     if grupo_bloqueado is None:
         raise ValidationError("El grupo indicado no existe.")
+
+    if grupo_bloqueado.archivado:
+        raise ValidationError("El grupo está archivado.")
 
     registrado_por = registrado_por or pagador
 
