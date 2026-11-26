@@ -207,3 +207,26 @@ class PruebasObligacionesYPagos(TestCase):
         with self.assertRaises(ValidationError):
             responder_pago(self.acreedor, self.grupo.pk, pago.pk, True)
         self.assertEqual(self.obligacion.saldo_pendiente, Decimal("8000.00"))
+
+
+    def test_compra_objetada_no_admite_pago_directo(self):
+        from expenses.models import RevisionCompra
+
+        RevisionCompra.objects.create(compra=self.compra, usuario=self.deudor, estado="objetada")
+        with self.assertRaises(ValidationError):
+            registrar_pago_directo(
+                self.deudor, grupo_id=self.grupo.pk, deudor_id=self.deudor.pk,
+                acreedor_id=self.acreedor.pk, monto="1000.00", fecha=date.today(),
+            )
+        self.assertFalse(Pago.objects.filter(grupo=self.grupo).exists())
+
+    def test_objecion_impide_confirmar_pago_pendiente(self):
+        from expenses.models import RevisionCompra
+
+        pago = self.registrar_abono(estado="pendiente")
+        RevisionCompra.objects.create(compra=self.compra, usuario=self.deudor, estado="objetada")
+        with self.assertRaises(ValidationError):
+            responder_pago(self.acreedor, self.grupo.pk, pago.pk, True)
+        pago.refresh_from_db()
+        self.assertEqual(pago.estado, "pendiente")
+        self.assertEqual(self.obligacion.saldo_pendiente, Decimal("10000.00"))
