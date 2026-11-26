@@ -230,3 +230,23 @@ class PruebasObligacionesYPagos(TestCase):
         pago.refresh_from_db()
         self.assertEqual(pago.estado, "pendiente")
         self.assertEqual(self.obligacion.saldo_pendiente, Decimal("10000.00"))
+
+
+    def test_saldos_conservan_participantes_historicos(self):
+        Membresia.objects.filter(grupo=self.grupo, usuario=self.deudor).update(activo=False)
+        saldos = calcular_saldos(self.grupo)
+        self.assertEqual(saldos[self.deudor.pk], Decimal("-10000"))
+        self.assertEqual(saldos[self.acreedor.pk], Decimal("10000"))
+        self.assertEqual(sum(saldos.values()), 0)
+
+    def test_saldos_incluyen_integrantes_sin_movimientos(self):
+        integrante = Usuario.objects.create_user(email="nuevo@test.com", password="ClaveSegura123!")
+        Membresia.objects.create(grupo=self.grupo, usuario=integrante)
+        saldos = calcular_saldos(self.grupo)
+        self.assertEqual(saldos[integrante.pk], Decimal("0"))
+        self.assertEqual(sum(saldos.values()), 0)
+
+    def test_calculo_saldos_utiliza_seis_consultas(self):
+        with self.assertNumQueries(6):
+            saldos = calcular_saldos(self.grupo)
+        self.assertEqual(sum(saldos.values()), 0)
