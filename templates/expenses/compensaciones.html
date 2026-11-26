@@ -11,6 +11,11 @@
 <p class="resumen-compensacion"><strong>$ {{ solicitud.monto|floatformat:2 }}</strong><span class="estado-compensacion estado-{{ solicitud.estado }}">{{ solicitud.get_estado_display }}</span></p>
 <p>Solicitada: {{ solicitud.fecha|date:"d/m/Y H:i" }}</p>
 {% if solicitud.fecha_aplicacion %}<p>Aplicada: {{ solicitud.fecha_aplicacion|date:"d/m/Y H:i" }}</p>{% endif %}
+<h4>Obligaciones que se compensarán</h4>
+<div class="table-wrap"><table class="data-table tabla-compensacion"><thead><tr><th>Debe</th><th>Recibe</th><th>Valor</th></tr></thead><tbody>
+{% for tramo in solicitud.tramos.all %}<tr><td data-etiqueta="Debe">{{ tramo.obligacion.deudor.get_full_name|default:tramo.obligacion.deudor.email }}</td><td data-etiqueta="Recibe">{{ tramo.obligacion.acreedor.get_full_name|default:tramo.obligacion.acreedor.email }}</td><td data-etiqueta="Valor">$ {{ tramo.monto|floatformat:2 }}</td></tr>{% endfor %}
+</tbody></table></div>
+<h4>Aprobaciones</h4>
 <div class="table-wrap"><table class="data-table tabla-compensacion"><thead><tr><th>Integrante</th><th>Estado</th></tr></thead><tbody>
 {% for aprobacion in solicitud.aprobaciones.all %}
 <tr><td data-etiqueta="Integrante">{{ aprobacion.usuario.get_full_name|default:aprobacion.usuario.email }}</td><td data-etiqueta="Estado">{{ aprobacion.get_estado_display }}
