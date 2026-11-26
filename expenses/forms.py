@@ -143,3 +143,21 @@ class EditarPagoForm(forms.Form):
         label="Fecha",
         widget=forms.DateInput(attrs={"type": "date"})
     )
+
+
+class PagoForm(forms.Form):
+    deudor = forms.ModelChoiceField(queryset=Usuario.objects.none(), label="Quién pagó")
+    acreedor = forms.ModelChoiceField(queryset=Usuario.objects.none(), label="Quién recibió")
+    monto = forms.DecimalField(label="Valor (COP)", max_digits=12, decimal_places=2, min_value=0.01)
+    fecha = forms.DateField(label="Fecha", initial=timezone.localdate, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
+
+    def __init__(self, *args, miembros, usuario, administrador, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["deudor"].queryset = miembros if administrador else miembros.filter(pk=usuario.pk)
+        self.fields["acreedor"].queryset = miembros
+
+    def clean(self):
+        datos = super().clean()
+        if datos.get("deudor") and datos.get("deudor") == datos.get("acreedor"):
+            self.add_error("acreedor", "Elige una persona diferente al pagador.")
+        return datos
