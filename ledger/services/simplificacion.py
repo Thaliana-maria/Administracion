@@ -1,5 +1,6 @@
 from decimal import Decimal
 from functools import lru_cache
+from collections import deque
 
 from ledger.services.saldos import calcular_saldos
 from django.db.models import Q, Sum
@@ -102,3 +103,27 @@ def transferencias_disponibles(grupo):
             montos[clave] = montos.get(clave, Decimal("0")) + pendiente
     return [{"deudor_id": deudor, "acreedor_id": acreedor, "monto": monto}
             for (deudor, acreedor), monto in sorted(montos.items())]
+
+
+def buscar_cadena(disponibles, deudor_id, acreedor_id, monto):
+    if deudor_id == acreedor_id or not monto.is_finite() or monto <= 0:
+        return []
+    conexiones = {}
+    for deuda in disponibles:
+        if deuda["monto"] >= monto:
+            conexiones.setdefault(deuda["deudor_id"], []).append(deuda["acreedor_id"])
+    pendientes = deque([deudor_id])
+    anteriores = {deudor_id: None}
+    while pendientes:
+        persona = pendientes.popleft()
+        if persona == acreedor_id:
+            cadena = []
+            while persona is not None:
+                cadena.append(persona)
+                persona = anteriores[persona]
+            return list(reversed(cadena))
+        for siguiente in sorted(conexiones.get(persona, [])):
+            if siguiente not in anteriores:
+                anteriores[siguiente] = persona
+                pendientes.append(siguiente)
+    return []
