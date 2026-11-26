@@ -5,7 +5,7 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from auditlog.services import registrar_cambio
-from expenses.models import Asignacion, Compra, Item, Membresia
+from expenses.models import Asignacion, Compra, Grupo, Item, Membresia
 from expenses.services.ajustes import recalcular_ajustes_compra
 from expenses.services.permisos import exigir_puede_editar_compra
 from ledger.models import Obligacion
@@ -17,6 +17,7 @@ def _exigir_sin_abonos(compra, asignaciones=None):
         anulada=False,
         aplicaciones__anulada=False,
         aplicaciones__pago__anulada=False,
+        aplicaciones__pago__estado__in=["pendiente", "confirmado"],
     )
     if asignaciones is not None:
         obligaciones = obligaciones.filter(asignacion__in=asignaciones)
@@ -38,6 +39,8 @@ def _datos_compra(compra):
 
 @transaction.atomic
 def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion=None):
+    grupo_id = Compra.objects.values_list("grupo_id", flat=True).get(pk=compra_id)
+    Grupo.objects.select_for_update().get(pk=grupo_id)
     compra = Compra.objects.select_for_update().get(pk=compra_id)
     exigir_puede_editar_compra(compra, usuario)
     if compra.anulada:
@@ -75,6 +78,8 @@ def actualizar_compra(usuario, compra_id, *, fecha=None, total=None, descripcion
 
 @transaction.atomic
 def actualizar_item(usuario, item_id, *, valor, asignaciones, descripcion=None):
+    grupo_id = Item.objects.values_list("compra__grupo_id", flat=True).get(pk=item_id)
+    Grupo.objects.select_for_update().get(pk=grupo_id)
     item = Item.objects.select_for_update().select_related("compra").get(pk=item_id)
     exigir_puede_editar_compra(item.compra, usuario)
     if item.anulada or item.compra.anulada:
@@ -196,6 +201,8 @@ def _reemplazar_asignaciones(item, usuario, valores, existentes=None):
 
 @transaction.atomic
 def anular_item(usuario, item_id):
+    grupo_id = Item.objects.values_list("compra__grupo_id", flat=True).get(pk=item_id)
+    Grupo.objects.select_for_update().get(pk=grupo_id)
     item = Item.objects.select_for_update().select_related("compra").get(pk=item_id)
     exigir_puede_editar_compra(item.compra, usuario)
     if item.anulada or item.compra.anulada:
@@ -245,6 +252,8 @@ def anular_item(usuario, item_id):
 
 @transaction.atomic
 def anular_compra(usuario, compra_id):
+    grupo_id = Compra.objects.values_list("grupo_id", flat=True).get(pk=compra_id)
+    Grupo.objects.select_for_update().get(pk=grupo_id)
     compra = Compra.objects.select_for_update().get(pk=compra_id)
     exigir_puede_editar_compra(compra, usuario)
     if compra.anulada:
