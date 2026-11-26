@@ -70,7 +70,7 @@
             <h2>Transferencias sugeridas</h2>
             <p>
                 Propuesta de transferencias para equilibrar los saldos
-                con el menor número de movimientos.
+                con menos movimientos. En grupos grandes se usa una aproximación.
             </p>
         </div>
     </div>
@@ -107,6 +107,9 @@
                         </td>
                         <td>
                             $ {{ transferencia.monto|floatformat:2 }}
+                            {% if transferencia.registrable and user.id == transferencia.deudor.id or transferencia.registrable and puede_gestionar %}
+                            <a class="button outline" href="{% url 'pagos_grupo' grupo.id %}?deudor={{ transferencia.deudor.id }}&amp;acreedor={{ transferencia.acreedor.id }}&amp;monto={{ transferencia.monto|stringformat:'f' }}">Registrar pago</a>
+                            {% elif not transferencia.registrable %}<small>Recomendación teórica; no disponible como pago directo.</small>{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
