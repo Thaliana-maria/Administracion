@@ -953,3 +953,14 @@ tbody tr:last-child td {
 .auth-form input[aria-invalid="true"] {
     border-color: var(--danger);
 }
+
+@media (max-width: 650px) {
+    .tabla-compras { min-width: 0; }
+    .tabla-compras thead { display: none; }
+    .tabla-compras tbody, .tabla-compras tr, .tabla-compras td { display: block; }
+    .tabla-compras tr { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 12px; padding: 8px; }
+    .tabla-compras td { display: flex; justify-content: space-between; gap: 10px; border: 0; overflow-wrap: anywhere; }
+    .tabla-compras td[data-etiqueta]::before { content: attr(data-etiqueta); color: var(--muted); }
+    .side-nav { overflow-x: auto; justify-content: flex-start; }
+    .side-nav a { flex: 1 0 auto; }
+}
