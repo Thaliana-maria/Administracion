@@ -9,7 +9,8 @@
 <div class="panel">
 <h3>{{ solicitud.deudor.get_full_name|default:solicitud.deudor.email }} → {{ solicitud.acreedor.get_full_name|default:solicitud.acreedor.email }}</h3>
 <p><strong>$ {{ solicitud.monto|floatformat:2 }}</strong> · {{ solicitud.get_estado_display }}</p>
-<p>{{ solicitud.fecha|date:"d/m/Y H:i" }}</p>
+<p>Solicitada: {{ solicitud.fecha|date:"d/m/Y H:i" }}</p>
+{% if solicitud.fecha_aplicacion %}<p>Aplicada: {{ solicitud.fecha_aplicacion|date:"d/m/Y H:i" }}</p>{% endif %}
 <div class="table-wrap"><table class="data-table"><thead><tr><th>Integrante</th><th>Estado</th></tr></thead><tbody>
 {% for aprobacion in solicitud.aprobaciones.all %}
 <tr><td>{{ aprobacion.usuario.get_full_name|default:aprobacion.usuario.email }}</td><td>{{ aprobacion.get_estado_display }}
