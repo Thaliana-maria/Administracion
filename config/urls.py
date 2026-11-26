@@ -1,6 +1,7 @@
 
 from django.urls import path, include
 from accounts.views import registro
+from accounts.limites import InicioSesionProtegido
 from expenses import views as expenses_views
 
 urlpatterns = [
@@ -13,6 +14,7 @@ urlpatterns = [
     path("cuentas/", include("accounts.urls")),
 
     # Autenticación de Django
+    path("cuentas/login/", InicioSesionProtegido.as_view(), name="login"),
     path("cuentas/", include("django.contrib.auth.urls")),
 
     # Gestión de roles
