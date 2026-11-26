@@ -205,6 +205,7 @@ def detalle_grupo(request, grupo_id):
             "compras": compras,
             "miembros": miembros,
             "membresias": membresias,
+            "formulario_nombre": GrupoForm(initial={"nombre": grupo.nombre}),
             "puede_gestionar": es_administrador(
                 grupo,
                 request.user,
@@ -965,3 +966,25 @@ def responder_compra(request, compra_id):
         registrar_cambio(request.user, compra, "revision", {"antes": anterior, "despues": accion})
         messages.success(request, "Tu revisión fue registrada.")
     return redirect("compra_detalle", compra_id=compra.pk)
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def editar_grupo(request, grupo_id):
+    grupo = _grupo_del_usuario(request, grupo_id)
+    grupo = Grupo.objects.select_for_update().get(pk=grupo.pk)
+    if grupo.archivado or not es_administrador(grupo, request.user):
+        raise PermissionDenied("No puedes editar este grupo.")
+    formulario = GrupoForm(request.POST)
+    if formulario.is_valid():
+        nombre = formulario.cleaned_data["nombre"]
+        if nombre != grupo.nombre:
+            anterior = grupo.nombre
+            grupo.nombre = nombre
+            grupo.save(update_fields=["nombre"])
+            registrar_cambio(request.user, grupo, "editar", {"antes": anterior, "despues": nombre})
+        messages.success(request, "Nombre del grupo actualizado.")
+    else:
+        messages.error(request, "Ingresa un nombre válido de máximo 100 caracteres.")
+    return redirect("grupo_detalle", grupo_id=grupo.pk)
