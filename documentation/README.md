@@ -1,12 +1,9 @@
-# Proyecto Administración
+# ¿Quién gastó esto? — Especificación y Documentación
 
-Aplicación web en **Python / Django** para gestionar cuentas, roles y permisos, gastos, saldos, compensaciones y auditoría de movimientos entre integrantes.
+Aplicación web desarrollada con **Python y Django** (interfaz en **HTML, CSS y JavaScript** siguiendo diseños de **Figma**) para registrar compras compartidas, desglosar productos, calcular saldos y simplificar deudas entre integrantes de un grupo, hogar o familia.
 
-## Módulos principales
-* **accounts:** Registro con autorización, usuarios, roles y permisos.
-* **expenses:** Registro y gestión de gastos, compras y rutas de compensación.
-* **ledger:** Cálculo de saldos, pagos y confirmación de compensaciones.
-* **auditlog:** Historial y trazabilidad de compras, pagos, saldos y roles.
-* **config:** Configuración general del proyecto, rutas y límites de acceso.
-* **templates y static:** Interfaces web (dashboard, pagos y gestión adaptable a móvil).
-
+## Alcance de la versión actual
+* **Registro 100 % manual:** Ingreso de compras, ítems, precios y abonos sin OCR ni lectura automática de facturas.
+* **Grupos y roles:** Creación de grupos, gestión de integrantes, rol de miembro estándar y rol de administrador del grupo.
+* **Asignación y categorías:** Asignación individual, compartida en partes iguales o mediante categorías colectivas como **Hogar** y **Mascota** (sin reparto proporcional por porcentajes en esta versión).
+* **Saldos, compensaciones y auditoría:** Cálculo dinámico de saldos, invariante de balance cero, sugerencia de transferencias mínimas y registro de cambios.
