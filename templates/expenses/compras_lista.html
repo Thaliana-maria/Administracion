@@ -3,14 +3,14 @@
 {% block titulo %}Compras | {{ grupo.nombre }}{% endblock %}
 
 {% block contenido %}
-<div class="page-heading">
+<div class="page-heading cabecera-compras">
     <div>
         <span class="breadcrumb">{{ grupo.nombre }}</span>
         <h1>Compras</h1>
     </div>
     {% if not grupo.archivado %}<a class="button primary" href="{% url 'compra_nueva' grupo.id %}">Nueva compra</a>{% else %}<span>Grupo archivado · Solo lectura</span>{% endif %}
 </div>
-<section class="panel feature-panel">
+<section class="panel feature-panel lista-compras-escritorio">
     <div class="table-wrap">
         <table class="data-table tabla-compras">
             <thead>
@@ -30,6 +30,16 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+    <div class="lista-compras-movil">
+        {% for compra in compras %}
+        <a class="tarjeta-compra" href="{% url 'compra_detalle' compra.id %}">
+            <div><strong>{{ compra.descripcion|default:"Compra" }}</strong><small>{{ compra.fecha|date:"d M" }} · pagó {{ compra.pagador.get_full_name|default:compra.pagador.email }}</small></div>
+            <div><span class="estado-compra {% if compra.anulada %}estado-anulada{% endif %}">{% if compra.anulada %}Anulada{% else %}Activa{% endif %}</span><strong>$ {{ compra.total|floatformat:"0g" }}</strong></div>
+        </a>
+        {% empty %}<p>No hay compras registradas.</p>{% endfor %}
+        <p class="form-help">Las compras anuladas no cuentan en los saldos.</p>
+        {% if not grupo.archivado %}<a class="button primary" href="{% url 'compra_nueva' grupo.id %}">Nueva compra</a>{% endif %}
     </div>
     {% if compras.has_other_pages %}
     <div class="quick-links">
