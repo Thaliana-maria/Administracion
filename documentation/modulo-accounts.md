@@ -1,9 +1,3 @@
-# Cuentas, Roles y Permisos (accounts)
+# Cuentas, roles y permisos (accounts)
 
-El módulo `accounts` administra el acceso y los permisos de los integrantes dentro del sistema:
-
-* **Registro y autenticación:** Alta de usuarios con correo y contraseña (almacenada con hash seguro) e inicio de sesión.
-* **Control de grupos:** Verificación de pertenencia al grupo para impedir el acceso a datos de grupos ajenos.
-* **Roles:**
-  * **Miembro / Participante:** Registra compras e ítems, asigna gastos y consulta saldos y deudas del grupo.
-  * **Administrador del grupo:** Cuenta con los permisos de miembro más la gestión de integrantes y la edición/anulación de compras o pagos.
+Gestiona registro, inicio y cierre de sesión, perfil y contraseña mediante hash. Incluye autorización de tratamiento de datos, unicidad de correo sin distinguir mayúsculas y límite de intentos de acceso. La pertenencia y los roles de grupo se gestionan en expenses. El administrador del grupo conserva las funciones del miembro y tiene permisos adicionales sujetos a las reglas financieras. La confirmación de pagos corresponde al acreedor.

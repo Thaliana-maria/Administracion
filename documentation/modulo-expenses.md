@@ -1,7 +1,3 @@
-# Gastos y Compras (expenses)
+# Gastos y compras (expenses)
 
-El módulo `expenses` gestiona el ingreso manual de compras, productos y compensaciones:
-
-* **Registro de compras:** Captura fecha, valor total y pagador.
-* **Desglose de ítems:** Registra cada producto o ítem con su valor y lo asigna a un integrante específico, a varios en partes iguales o a categorías como **Hogar** o **Mascota**.
-* **Edición y anulación:** Permite corregir o anular registros cuidando que no se rompa la consistencia contable ni el historial.
+Gestiona grupos, integrantes, compras, ítems y asignaciones. Valida permisos, montos, IVA y descuentos; reparte gastos entre beneficiarios y registra revisiones de compras. La edición y anulación se restringen cuando existen abonos o compensaciones que comprometen la integridad financiera. El retiro de integrantes y archivado de grupos están sujetos a saldos y obligaciones pendientes.

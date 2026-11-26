@@ -1,15 +1,12 @@
-# Instalación Local
+# Instalación local
 
-1. Clonar el repositorio:
-   `git clone https://github.com/Thaliana-maria/Administracion.git`
-2. Entrar al directorio del proyecto:
-   `cd Administracion`
-3. Crear y activar entorno virtual e instalar dependencias:
-   `pip install -r requirements.txt`
-4. Aplicar migraciones y arrancar el servidor:
-   `python manage.py migrate`
-   `python manage.py runserver`
-   ## Entorno alternativo (Linux / macOS)
-```bash
-python3 -m venv venv
-source venv/bin/activate
+En Windows, desde la carpeta del proyecto:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py runserver
+```
+
+Abre http://127.0.0.1:8000/. Para ejecutar las pruebas: `python manage.py test -v 2`. Las 101 pruebas escritas están pendientes de ejecución verificada. Consulta la introducción para configuración y actualización de bases existentes.

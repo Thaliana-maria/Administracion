@@ -1,7 +1,3 @@
-# Saldos y Compensaciones (ledger)
+# Saldos y compensaciones (ledger)
 
-El módulo `ledger` calcula las posiciones financieras de cada integrante y facilita liquidar deudas:
-
-* **Cálculo de saldos:** Determina lo pagado frente a lo asignado para indicar si un integrante tiene saldo a favor, deuda pendiente o saldo en cero.
-* **Simplificación de deudas:** Resume las deudas cruzadas para sugerir el menor número de transferencias posible.
-* **Pagos y abonos:** Registra pagos parciales o totales entre integrantes y actualiza los saldos de inmediato.
+Calcula saldos a favor y deudas. Los pagos pendientes reservan capacidad, pero solo los confirmados afectan los saldos. La simplificación busca un plan mínimo hasta diez saldos no nulos y utiliza una aproximación para grupos mayores. Las compensaciones indirectas requieren aprobación de los participantes de la cadena y confirmación del acreedor; solo las aplicadas modifican saldos. Las sugerencias no ejecutan transferencias bancarias.
