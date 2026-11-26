@@ -162,6 +162,8 @@ def actualizar_pago(
     deudor_id=None,
     acreedor_id=None,
 ):
+    grupo_id = Pago.objects.values_list("grupo_id", flat=True).get(pk=pago_id)
+    Grupo.objects.select_for_update().get(pk=grupo_id)
     pago = Pago.objects.select_for_update().get(pk=pago_id)
     exigir_puede_editar_pago(pago, usuario)
     if pago.anulada:
@@ -239,6 +241,8 @@ def actualizar_pago(
 
 @transaction.atomic
 def anular_pago(usuario, pago_id):
+    grupo_id = Pago.objects.values_list("grupo_id", flat=True).get(pk=pago_id)
+    Grupo.objects.select_for_update().get(pk=grupo_id)
     pago = Pago.objects.select_for_update().get(pk=pago_id)
     if Grupo.objects.filter(pk=pago.grupo_id, archivado=True).exists():
         raise ValidationError("El grupo está archivado.")
