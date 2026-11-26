@@ -103,6 +103,8 @@ class ItemForm(forms.Form):
 
 
 class EditarCompraForm(forms.Form):
+    impuesto = forms.DecimalField(label="IVA adicional (COP)", max_digits=12, decimal_places=2, min_value=0, required=False)
+    descuento = forms.DecimalField(label="Descuento general (COP)", max_digits=12, decimal_places=2, min_value=0, required=False)
     fecha = forms.DateField(
         label="Fecha",
         widget=forms.DateInput(attrs={"type": "date"})
