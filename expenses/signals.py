@@ -42,6 +42,9 @@ def sincronizar_obligacion(sender, instance, **kwargs):
     from ledger.models import Obligacion
 
     compra = instance.item.compra
+    if instance.anulada or instance.item.anulada or compra.anulada:
+        Obligacion.objects.filter(asignacion=instance).update(anulada=True)
+        return
     if instance.beneficiario_id == compra.pagador_id:
         Obligacion.objects.filter(asignacion=instance).update(anulada=True)
         return
