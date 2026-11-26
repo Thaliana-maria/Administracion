@@ -55,10 +55,11 @@ def _validar_aplicaciones(
         obligacion = (
             Obligacion.objects.select_for_update()
             .select_related("asignacion__item__compra")
-            .get(pk=obligacion_id)
+            .filter(pk=obligacion_id, grupo_id=grupo_id).first()
         )
         if (
-            obligacion.grupo_id != grupo_id
+            obligacion is None
+            or obligacion.grupo_id != grupo_id
             or obligacion.deudor_id != deudor_id
             or obligacion.acreedor_id != acreedor_id
             or obligacion.anulada
@@ -286,6 +287,8 @@ def registrar_pago_directo(usuario, *, grupo_id, deudor_id, acreedor_id, monto, 
     if not es_administrador(grupo_id, usuario) and usuario.pk != deudor_id:
         raise PermissionDenied("Un miembro solo puede registrar sus propios pagos.")
     monto = _validar_monto(monto)
+    if deudor_id == acreedor_id:
+        raise ValidationError("El deudor y el acreedor deben ser personas distintas.")
     restante = monto
     aplicaciones = []
     obligaciones = Obligacion.objects.select_for_update().filter(
