@@ -103,6 +103,13 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "inicio"
 LOGOUT_REDIRECT_URL = "login"
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache" if not DEBUG else "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "cache_acceso",
+    }
+}
+
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
