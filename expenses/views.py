@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Count, Q, Sum, Max
+from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -765,7 +765,7 @@ def dashboard_grupo(request, grupo_id):
         {"fecha": pago.fecha, "id": pago.pk, "tipo": "Pago", "descripcion": "Pago a " + (pago.acreedor.get_full_name() or pago.acreedor.email), "persona": pago.deudor, "valor": pago.monto}
         for pago in ultimos_pagos
     ]
-    ultimas_compensaciones = grupo.compensaciones.filter(estado="aplicada").select_related("deudor", "acreedor").annotate(fecha_aplicacion=Max("aprobaciones__fecha_respuesta")).order_by("-fecha_aplicacion", "-pk")[:5]
+    ultimas_compensaciones = grupo.compensaciones.filter(estado="aplicada").select_related("deudor", "acreedor").order_by("-fecha_aplicacion", "-pk")[:5]
     movimientos.extend(
         {"fecha": timezone.localtime(compensacion.fecha_aplicacion or compensacion.fecha).date(), "id": compensacion.pk, "tipo": "Compensación", "descripcion": "Compensación a " + (compensacion.acreedor.get_full_name() or compensacion.acreedor.email), "persona": compensacion.deudor, "valor": compensacion.monto, "compensacion_id": compensacion.pk}
         for compensacion in ultimas_compensaciones
