@@ -1101,3 +1101,22 @@ tbody tr:last-child td {
     .etiqueta-cambio { background: #D8EBF1; color: #10596C; border-radius: 12px; padding: 3px 8px; font-size: 11px; font-weight: 700; }
     .etiqueta-anulacion { background: #FBE5DB; color: #BF4824; }
 }
+
+
+.campo-pago { margin-bottom: 14px; }
+.campo-pago label { display: block; margin-bottom: 5px; font-weight: 600; }
+.campo-pago input, .campo-pago select { width: 100%; }
+.aviso-error { background: #FBE5DB; color: #963719; border: 1px solid #BF4824; border-radius: 8px; padding: 12px; margin-bottom: 14px; }
+.campo-pago:has(.errorlist) input, .campo-pago:has(.errorlist) select { border-color: #BF4824; }
+.campo-pago .errorlist { color: #963719; font-size: 12px; margin: 5px 0; padding-left: 16px; }
+
+@media (max-width: 650px) {
+    .historial-pagos .fila-pago { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; padding: 8px 0; margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+    .historial-pagos .fila-pago td { display: inline; padding: 0; font-size: 12px; }
+    .historial-pagos .fila-pago td::before { content: none; }
+    .historial-pagos .fila-pago td[data-etiqueta="Fecha"]::after { content: " · "; }
+    .historial-pagos .fila-pago td[data-etiqueta="Pagó"]::after { content: " → "; }
+    .historial-pagos .fila-pago td[data-etiqueta="Recibió"]::after { content: " · "; }
+    .historial-pagos .fila-pago td[data-etiqueta="Estado"] { width: 100%; color: var(--muted); }
+    .historial-pagos .fila-pago td .button { margin: 4px 4px 0 0; }
+}
