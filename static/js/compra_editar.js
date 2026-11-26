@@ -24,6 +24,7 @@ if (formulario) {
         const valido = Number.isFinite(total) && subtotal > 0 && total > 0 && total <= 9999999999.99;
         document.getElementById("aviso-edicion").textContent = valido ? "Total calculado. El servidor verificará los cambios." : "Revisa los valores de la compra.";
         siguiente.disabled = !valido;
+        agregar.disabled = Number(cantidad.value) >= Number(maximo.value);
         return valido;
     }
     function mostrarPaso(numero) {
@@ -66,6 +67,19 @@ if (formulario) {
         siguiente.addEventListener("click", () => {
             const incorrecto = Array.from(formulario.elements).find(campo => campo.willValidate && !campo.closest("[hidden]") && !campo.checkValidity());
             if (incorrecto) { incorrecto.reportValidity(); return; }
+            for (const fila of formulario.querySelectorAll(".item-edicion")) {
+                if (fila.querySelector('[name$="-retirar"]')?.checked) continue;
+                const descripcion = fila.querySelector('[name$="-descripcion"]');
+                const valor = fila.querySelector('[name$="-valor"]');
+                if (!descripcion || !valor || (!descripcion.value.trim() && !valor.value)) continue;
+                if (!descripcion.value.trim() || !valor.value || Number(valor.value) <= 0) {
+                    const campo = !descripcion.value.trim() ? descripcion : valor;
+                    campo.setCustomValidity("Completa la descripción y el valor positivo del ítem.");
+                    campo.reportValidity();
+                    campo.addEventListener("input", () => campo.setCustomValidity(""), {once: true});
+                    return;
+                }
+            }
             if (calcular()) mostrarPaso(2);
         });
         anterior.addEventListener("click", () => mostrarPaso(1));
@@ -76,5 +90,9 @@ if (formulario) {
             if (evento.target.closest("[hidden]")) mostrarPaso(1);
         }, true);
     }
+    formulario.addEventListener("submit", evento => {
+        if (!evento.defaultPrevented) guardar.disabled = true;
+    });
+    window.addEventListener("pageshow", () => guardar.disabled = false);
     calcular();
 }
