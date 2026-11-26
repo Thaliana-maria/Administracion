@@ -61,4 +61,6 @@ En producción se debe configurar una clave secreta propia, desactivar DEBUG, co
 
 ## Validaciones pendientes
 
+El cálculo de saldos incorpora dos consultas agrupadas adicionales para las compensaciones aplicadas. Las pruebas esperan ocho consultas en total, independientemente de la cantidad de integrantes; esta expectativa aún no se ha ejecutado. Los seis casos nuevos de compensaciones verifican el flujo y sus permisos una vez ejecutados.
+
 La arquitectura conserva el monolito modular. Todavía se requiere ejecutar las migraciones y pruebas completas, comprobar la concurrencia, medir el RNF-04 y revisar las interfaces frente a Figma. La compensación indirecta está incorporada en el código, pero su funcionamiento, concurrencia y efecto contable todavía deben comprobarse con pruebas.
