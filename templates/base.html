@@ -23,6 +23,7 @@
             {% firstof grupo.id compra.grupo_id pago.grupo_id item.compra.grupo_id as grupo_actual %}
             <a href="{% url 'grupo_dashboard' grupo_actual %}">Resumen</a>
             <a href="{% url 'compras_lista' grupo_actual %}">Compras</a>
+            <a href="{% url 'pagos_grupo' grupo_actual %}">Pagos</a>
             <a href="{% url 'grupo_detalle' grupo_actual %}">Integrantes</a>
             <a href="{% url 'historial_grupo' grupo_actual %}">Cambios</a>
             {% endif %}
