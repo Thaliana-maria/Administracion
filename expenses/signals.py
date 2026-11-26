@@ -46,6 +46,9 @@ def proteger_obligaciones_con_abonos(sender, instance, **kwargs):
 def sincronizar_obligacion(sender, instance, **kwargs):
     from ledger.models import Obligacion
 
+    if Obligacion.objects.filter(asignacion=instance, tramos_compensacion__compensacion__estado__in=["pendiente", "aprobada", "aplicada"]).exists():
+        return
+
     compra = instance.item.compra
     if instance.anulada or instance.item.anulada or compra.anulada:
         Obligacion.objects.filter(asignacion=instance).update(anulada=True)
