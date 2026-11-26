@@ -49,6 +49,7 @@ from expenses.services.registros import (
     actualizar_compra,
     actualizar_item,
     actualizar_items_compra,
+    version_compra,
 )
 from ledger.models import Pago
 from ledger.services.obligaciones import (
@@ -446,6 +447,7 @@ def editar_compra(request, compra_id):
                     pagador_id=datos["pagador"].pk if datos["pagador"] else None,
                     impuesto=datos["impuesto"] or Decimal("0"),
                     descuento=datos["descuento"] or Decimal("0"),
+                    version=request.POST.get("version_compra", ""),
                 )
             except ValidationError as error:
                 formulario.add_error(None, error)
@@ -461,6 +463,7 @@ def editar_compra(request, compra_id):
             "formulario": formulario,
             "items_activos": items_activos,
             "formularios_items": formularios_items,
+            "version_compra": request.POST.get("version_compra", "") if editar_items else version_compra(compra),
             "subtotal": compra.total - compra.impuesto + compra.descuento,
         },
     )
