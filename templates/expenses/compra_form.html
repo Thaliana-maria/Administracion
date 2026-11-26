@@ -12,7 +12,7 @@
         <h1>Nueva compra</h1>
         <p>Registra quién pagó y distribuye los gastos entre los integrantes.</p>
     </div>
-    <a class="button outline" href="{% url 'grupo_detalle' grupo.id %}">
+    <a class="button outline" href="{% url 'compras_lista' grupo.id %}">
         Volver al grupo
     </a>
 </div>
@@ -26,9 +26,11 @@
         </div>
     {% endif %}
 
-    <section class="panel feature-panel">
-        <h2>Información general</h2>
-        <p id="paso-compra">Paso 1 de 2: datos de la compra</p>
+    <p id="paso-compra" class="indicador-paso">Paso 1 de 2: datos de la compra</p>
+    <div class="distribucion-compra">
+    <div class="datos-compra">
+    <section class="panel feature-panel" id="datos-generales">
+        <h2>Datos de la compra</h2>
         <div class="feature-form">
             {% for oculto in formulario.hidden_fields %}{{ oculto }}{{ oculto.errors }}{% endfor %}
             {% for field in formulario.visible_fields %}
@@ -49,7 +51,7 @@
     <section class="panel feature-panel">
         <div class="section-heading">
             <div>
-                <h2>Detalle de los ítems</h2>
+                <h2 id="titulo-items">Ítems de la compra</h2>
                 <p>Agrega los productos o gastos que forman parte de la compra.</p>
             </div>
             <button type="button" class="button outline" id="agregar-item">+ Agregar ítem</button>
@@ -104,24 +106,31 @@
         </p>
     </section>
 
+    </div>
+    <div class="verificacion-compra">
     <section class="panel feature-panel" id="vista-reparto" hidden>
         <h2>Distribución estimada por integrante</h2>
-        <p>Los pesos sobrantes se asignan primero al pagador y luego por orden alfabético. La estimación incluye el IVA y el descuento proporcional. El servidor verifica el reparto definitivo al guardar.</p>
+        <p class="regla-reparto">Los pesos sobrantes se asignan primero al pagador y luego por orden alfabético. La estimación incluye el IVA y el descuento proporcional. El servidor verifica el reparto definitivo al guardar.</p>
         <div id="partes-compra" aria-live="polite"></div>
     </section>
     <section class="panel feature-panel purchase-summary">
         <div>
-            <h2>Resumen de la compra</h2>
+            <h2>Verificación</h2>
             <p>El total corresponde a la suma de los ítems más el IVA, menos el descuento.</p>
         </div>
         <div class="live-total">
-            <span>Total estimado</span>
+            <div class="linea-verificacion"><span>Suma de ítems</span><span id="subtotal-compra">$ 0</span></div>
+            <div class="linea-verificacion"><span>IVA adicional</span><span id="iva-compra">$ 0</span></div>
+            <div class="linea-verificacion"><span>Descuento</span><span id="descuento-compra">$ 0</span></div>
+            <span>Total calculado</span>
             <strong id="purchase-total">$ 0</strong>
             <p id="verificacion-total" aria-live="polite"></p>
         </div>
     </section>
 
-    <div class="quick-links">
+    </div>
+    </div>
+    <div class="quick-links acciones-compra">
         <button type="button" class="button outline" id="paso-anterior" hidden>Anterior</button>
         <button type="button" class="button primary" id="paso-siguiente" hidden>Siguiente: asignar</button>
         <button type="submit" class="button primary" id="guardar-compra">
