@@ -22,9 +22,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const personas = Array.from(pagador.options).filter(opcion => opcion.value);
         const partes = new Map(personas.map(persona => [persona.value, 0]));
         const orden = personas.slice().sort((a, b) => {
+            if (a.value === b.value) return 0;
             if (a.value === pagador.value) return -1;
             if (b.value === pagador.value) return 1;
-            return compararNombres(a, b);
+            return compararNombres(a, b) || Number(a.value) - Number(b.value);
         });
         let incompleto = false;
         formulario.querySelectorAll(".purchase-item").forEach(fila => {
@@ -38,6 +39,7 @@ document.addEventListener("DOMContentLoaded", function () {
             } else {
                 const base = Math.floor(valor / orden.length);
                 const sobrante = valor % orden.length;
+                if (base === 0) incompleto = true;
                 orden.forEach((persona, indice) => partes.set(persona.value, partes.get(persona.value) + base + (indice < sobrante ? 1 : 0)));
             }
         });
@@ -70,7 +72,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         if (incompleto) {
             const aviso = document.createElement("p");
-            aviso.textContent = "Selecciona los beneficiarios pendientes.";
+            aviso.textContent = "Revisa los beneficiarios y los valores: cada asignación debe ser de al menos un peso.";
             contenedor.appendChild(aviso);
         }
     }
