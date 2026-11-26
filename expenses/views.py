@@ -34,6 +34,7 @@ from expenses.services.permisos import (
     exigir_puede_editar_compra,
     exigir_puede_editar_pago,
     es_administrador,
+    retirar_integrante,
 )
 from expenses.services.reparto import repartir
 from expenses.services.registros import (
@@ -878,3 +879,18 @@ def responder_pago_vista(request, grupo_id, pago_id):
     else:
         messages.success(request, "Respuesta del pago registrada.")
     return redirect("pagos_grupo", grupo_id=grupo.pk)
+
+
+@login_required
+@require_POST
+def retirar_integrante_vista(request, grupo_id, miembro_id):
+    grupo = _grupo_del_usuario(request, grupo_id)
+    try:
+        retirar_integrante(request.user, grupo.pk, miembro_id)
+    except ValidationError as error:
+        messages.error(request, " ".join(error.messages))
+    else:
+        messages.success(request, "Integrante retirado correctamente.")
+        if request.user.pk == miembro_id:
+            return redirect("grupos")
+    return redirect("grupo_detalle", grupo_id=grupo.pk)
