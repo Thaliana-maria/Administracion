@@ -347,3 +347,53 @@ def anular_compra(usuario, compra_id):
                 {"compra_id": compra.pk, "item_id": item.pk},
             )
     return compra
+
+
+@transaction.atomic
+def actualizar_items_compra(usuario, compra_id, cambios):
+    grupo_id = Compra.objects.values_list("grupo_id", flat=True).get(pk=compra_id)
+    Grupo.objects.select_for_update().get(pk=grupo_id)
+    compra = Compra.objects.select_for_update().get(pk=compra_id)
+    exigir_puede_editar_compra(compra, usuario)
+    if compra.anulada:
+        raise ValidationError("La compra está anulada.")
+    _exigir_sin_abonos(compra)
+    items = {item.pk: item for item in compra.items.select_for_update().filter(anulada=False)}
+    if not cambios or len(cambios) > 100 or set(cambios) != set(items):
+        raise ValidationError("Los ítems no coinciden con la compra actual.")
+    preparados = []
+    subtotal = Decimal("0")
+    for identificador, datos in cambios.items():
+        item = items[identificador]
+        valor = datos["valor"]
+        if not valor.is_finite() or valor <= 0 or valor > Decimal("9999999999") or valor != valor.to_integral_value():
+            raise ValidationError("Cada ítem debe tener un valor positivo en pesos enteros.")
+        try:
+            valores = repartir(valor, datos["beneficiarios"], pagador=compra.pagador_id)
+        except ValueError as error:
+            raise ValidationError(str(error))
+        if any(parte <= 0 for parte in valores.values()):
+            raise ValidationError("Cada beneficiario debe recibir al menos un peso.")
+        preparados.append((item, datos["descripcion"], valor, valores))
+        subtotal += valor
+    total = subtotal + compra.impuesto - compra.descuento
+    if total <= 0 or total > Decimal("9999999999.99"):
+        raise ValidationError("El total resultante está fuera del rango permitido.")
+    anterior = _datos_compra(compra)
+    for item, descripcion, valor, valores in preparados:
+        existentes = list(item.asignaciones.filter(anulada=False))
+        anteriores = {fila.beneficiario_id: fila.valor_asignado for fila in existentes}
+        if item.descripcion == descripcion and item.valor == valor and anteriores == valores:
+            continue
+        datos_anteriores = {"descripcion": item.descripcion, "valor": str(item.valor)}
+        item.descripcion = descripcion
+        item.valor = valor
+        item.save(update_fields=["descripcion", "valor"])
+        _reemplazar_asignaciones(item, usuario, valores, existentes)
+        registrar_cambio(usuario, item, "editar", {"antes": datos_anteriores, "despues": {"descripcion": descripcion, "valor": str(valor)}})
+    compra.total = total
+    compra.save(update_fields=["total"])
+    recalcular_ajustes_compra(compra.pk)
+    renovar_revisiones(compra, usuario)
+    registrar_cambio(usuario, compra, "editar_items", {"antes": anterior, "despues": _datos_compra(compra)})
+    return compra
