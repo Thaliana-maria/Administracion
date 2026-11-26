@@ -57,7 +57,7 @@ from ledger.services.obligaciones import (
     responder_pago,
 )
 from ledger.services.saldos import calcular_saldos
-from ledger.services.simplificacion import simplificar_deudas
+from ledger.services.simplificacion import simplificar_deudas, transferencias_disponibles
 
 
 FILAS_ITEMS = 5
@@ -721,6 +721,7 @@ def dashboard_grupo(request, grupo_id):
     pagos_activos = Pago.objects.filter(
         grupo=grupo,
         anulada=False,
+        estado="confirmado",
     )
 
     resumen_pagos = pagos_activos.aggregate(
@@ -758,6 +759,7 @@ def dashboard_grupo(request, grupo_id):
 
     try:
         plan = simplificar_deudas(grupo, saldos=saldos)
+        disponibles = {(fila['deudor_id'], fila['acreedor_id']): fila['monto'] for fila in transferencias_disponibles(grupo)}
 
         ids_usuarios = {
             transferencia["deudor_id"]
@@ -791,6 +793,7 @@ def dashboard_grupo(request, grupo_id):
                     "deudor": deudor,
                     "acreedor": acreedor,
                     "monto": transferencia["monto"],
+                    "registrable": not grupo.archivado and disponibles.get((deudor.pk, acreedor.pk), 0) >= transferencia["monto"],
                 }
             )
 
@@ -854,7 +857,7 @@ def pagos_grupo(request, grupo_id):
     grupo = _grupo_del_usuario(request, grupo_id)
     formulario = PagoForm(request.POST or None, miembros=_miembros(grupo),
         usuario=request.user, administrador=es_administrador(grupo, request.user),
-        initial={"deudor": request.user, "clave_operacion": uuid4()})
+        initial={"deudor": request.GET.get("deudor", request.user.pk) if es_administrador(grupo, request.user) else request.user.pk, "acreedor": request.GET.get("acreedor"), "monto": request.GET.get("monto"), "clave_operacion": uuid4()})
     if request.method == "POST" and formulario.is_valid():
         datos = formulario.cleaned_data
         try:
