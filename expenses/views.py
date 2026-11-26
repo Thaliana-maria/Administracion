@@ -273,7 +273,9 @@ def nueva_compra(request, grupo_id):
             form_kwargs={"miembros": miembros},
         )
 
-        if formulario.is_valid() and formset.is_valid():
+        datos_validos = formulario.is_valid()
+        items_validos = formset.is_valid()
+        if datos_validos and items_validos:
             items = [
                 form.cleaned_data
                 for form in formset
